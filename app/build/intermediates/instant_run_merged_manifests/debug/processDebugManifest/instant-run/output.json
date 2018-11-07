@@ -1,0 +1,1 @@
+[{"outputType":{"type":"INSTANT_RUN_MERGED_MANIFESTS"},"apkInfo":{"type":"MAIN","splits":[],"versionCode":107,"versionName":"2.3.3","enabled":true,"outputFile":"Notebook-2.3.3.apk","fullName":"debug","baseName":"debug"},"path":"AndroidManifest.xml","properties":{"packageId":"com.farmerbb.notepad.debug","split":"","minSdkVersion":"28"}}]

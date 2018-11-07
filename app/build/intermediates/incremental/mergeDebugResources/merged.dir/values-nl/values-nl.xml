@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:ns1="urn:oasis:names:tc:xliff:document:1.2">
+    <string-array name="font_size_list">
+        <item>Kleinst</item>
+        <item>Klein</item>
+        <item>Normaal</item>
+        <item>Groot</item>
+        <item>Grootst</item>
+    </string-array>
+    <string-array name="sort_by_list">
+        <item>Datum (recentst eerst)</item>
+        <item>Naam (A-Z)</item>
+    </string-array>
+    <string-array name="theme_list">
+        <item>Licht / schreefloos</item>
+        <item>Licht / met schreef</item>
+        <item>Licht / vaste breedte</item>
+        <item>Donker / schreefloos</item>
+        <item>Donker / met schreef</item>
+        <item>Donker / vaste breedte</item>
+    </string-array>
+    <string msgid="4600421777120114993" name="abc_action_bar_home_description">"Navigeren naar startpositie"</string>
+    <string msgid="1594238315039666878" name="abc_action_bar_up_description">"Omhoog navigeren"</string>
+    <string msgid="3588849162933574182" name="abc_action_menu_overflow_description">"Meer opties"</string>
+    <string msgid="4076576682505996667" name="abc_action_mode_done">"Gereed"</string>
+    <string msgid="7468859129482906941" name="abc_activity_chooser_view_see_all">"Alles weergeven"</string>
+    <string msgid="2031811694353399454" name="abc_activitychooserview_choose_application">"Een app selecteren"</string>
+    <string msgid="121134116657445385" name="abc_capital_off">"UIT"</string>
+    <string msgid="3405795526292276155" name="abc_capital_on">"AAN"</string>
+    <string msgid="7723749260725869598" name="abc_search_hint">"Zoeken…"</string>
+    <string msgid="3691816814315814921" name="abc_searchview_description_clear">"Zoekopdracht wissen"</string>
+    <string msgid="2550479030709304392" name="abc_searchview_description_query">"Zoekopdracht"</string>
+    <string msgid="8264924765203268293" name="abc_searchview_description_search">"Zoeken"</string>
+    <string msgid="8928215447528550784" name="abc_searchview_description_submit">"Zoekopdracht verzenden"</string>
+    <string msgid="893419373245838918" name="abc_searchview_description_voice">"Gesproken zoekopdracht"</string>
+    <string msgid="3421042268587513524" name="abc_shareactionprovider_share_with">"Delen met"</string>
+    <string msgid="3300176832234831527" name="abc_shareactionprovider_share_with_application">"Delen met <ns1:g id="APPLICATION_NAME">%s</ns1:g>"</string>
+    <string msgid="1603543279005712093" name="abc_toolbar_collapse_description">"Samenvouwen"</string>
+    <string name="action_cancel">Annuleren</string>
+    <string name="action_close">Sluiten</string>
+    <string name="action_delete">Verwijderen</string>
+    <string name="action_discard">Verwerpen</string>
+    <string name="action_edit">Bewerken</string>
+    <string name="action_export">Exporteren</string>
+    <string name="action_font_size">Lettertypegrootte</string>
+    <string name="action_install">Installeren</string>
+    <string name="action_new">Nieuwe notitie</string>
+    <string name="action_no_thanks">Nee, bedankt</string>
+    <string name="action_print">Afdrukken</string>
+    <string name="action_save">Opslaan</string>
+    <string name="action_select_all">Alles selecteren</string>
+    <string name="action_settings">Instellingen</string>
+    <string name="action_share">Delen</string>
+    <string name="action_sort_by">Sorteren op</string>
+    <string name="action_start_selection">Notities selecteren</string>
+    <string name="action_theme">Thema</string>
+    <string name="app_name">Notitieblok</string>
+    <string name="app_name_debug">Notitieblok (foutopsporing)</string>
+    <string name="cab_note_selected">notitie geselecteerd</string>
+    <string name="cab_notes_selected">notities geselecteerd</string>
+    <string name="changes_discarded">Wijzigingen verworpen</string>
+    <string name="dialog_about_message">Notitieblok: een eenvoudige notitie-app\n\n© 2018 Braden Farmer\nApp-logo door Tobaloidee</string>
+    <string name="dialog_about_title">Over Notitieblok</string>
+    <string name="dialog_are_you_sure">Weet je het zeker?</string>
+    <string name="dialog_delete_button_title">Notitie verwijderen</string>
+    <string name="dialog_delete_button_title_plural">Notities verwijderen</string>
+    <string name="dialog_save_button_title">Opslaan</string>
+    <string name="dialog_save_changes">Wil je de wijzigingen opslaan?</string>
+    <string name="document">%1$s document</string>
+    <string name="double_tap">Tip: dubbeltik op de tekst om de bewerkmodus te openen</string>
+    <string name="draft_restored">Concept hersteld</string>
+    <string name="draft_saved">Concept opgeslagen</string>
+    <string name="edit_note">Notitie bewerken</string>
+    <string name="edit_text">Typ om tekst in te voeren</string>
+    <string name="empty_note">Voer tekst in!</string>
+    <string name="error_exporting_notes">Kan notities niet exporteren!</string>
+    <string name="error_importing_notes">Kan notities niet importeren!</string>
+    <string name="error_loading_list">Kan notitielijst niet laden</string>
+    <string name="error_loading_note">Kan notitie niet laden!</string>
+    <string name="failed_to_save">Fout: kan notitie niet opslaan!</string>
+    <string name="first_run">Welkom bij Notitieblok!\n\nVoeg een notitie toe door op de knop Nieuwe Notite (plus-teken) te drukken.</string>
+    <string name="first_view">Dubbeltik op een tekst om deze te bewerken of druk op de bewerkknop (potlood).</string>
+    <string name="import_notes">Notities importeren</string>
+    <string name="loading_external_file">Laden van externe bestanden niet toegestaan</string>
+    <string name="no_notes_found">Geen notities aangetroffen</string>
+    <string name="no_notes_to_delete">Geen te verwijderen notities geselecteerd</string>
+    <string name="no_notes_to_export">Geen te exporteren notities geselecteerd</string>
+    <string name="no_notes_to_select">Geen te selecteren notities</string>
+    <string name="note_deleted">Notitie verwijderd</string>
+    <string name="note_exported_to">Notitie geëxporteerd</string>
+    <string name="note_imported_successfully">Notitie geïmporteerd</string>
+    <string name="note_saved">Notitie opgelagen</string>
+    <string name="notes_deleted">Notities verwijderd</string>
+    <string name="notes_exported_to">Notities geëxporteerd</string>
+    <string name="notes_imported_successfully">Notities geïmporteerd</string>
+    <string name="pref_title_direct_edit">Notities direct bewerken</string>
+    <string name="pref_title_markdown">Markdown/HTML-ondersteuning</string>
+    <string name="pref_title_show_date">Datum/tijd tonen</string>
+    <string name="pref_title_show_dialogs">Vragen alvorens op te slaan</string>
+    <string msgid="146198913615257606" name="search_menu_title">"Zoeken"</string>
+    <string name="send_to">Notitie delen met…</string>
+    <string msgid="2869576371154716097" name="status_bar_notification_info_overflow">"999+"</string>
+    <string name="view_note">Notitie bekijken</string>
+</resources>

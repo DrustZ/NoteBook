@@ -15,11 +15,16 @@
 
 package com.farmerbb.notepad.fragment;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
@@ -55,6 +60,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.Magnifier;
 import android.widget.ScrollView;
 import android.widget.Toast;
 
@@ -67,19 +73,23 @@ import java.io.IOException;
 
 public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
-    final int padding_left = 16; //dp
-    final int padding_top = 12; //dp
+    final String TAG = "[Log]";
     private EditText noteContents;
+
 
     /**
      * touch related vars
      */
+    private Magnifier magnifier = null;
+    private ScrollView scrollview = null;
     private VelocityTracker mVelocityTracker = null;
     private boolean touching_still = false;
     private long still_touch_start = -1;
     private long still_threshold = 50;
+    private boolean correction_begin = false; // if entered the correction mode
     private int span_begin = -1;
     private int span_end = -1;
+    private String correction = null;
 
     String filename = String.valueOf(System.currentTimeMillis());
     String contentsOnLoad = "";
@@ -187,7 +197,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
         // Set up content view
         noteContents = getActivity().findViewById(R.id.editText1);
-
+        magnifier = new Magnifier(noteContents);
+        scrollview = getActivity().findViewById(R.id.scrollView1);
         // Apply theme
         SharedPreferences pref = getActivity().getSharedPreferences(getActivity().getPackageName() + "_preferences", Context.MODE_PRIVATE);
         ScrollView scrollView = getActivity().findViewById(R.id.scrollView1);
@@ -547,6 +558,32 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                     if(mVelocityTracker == null) {
                         // Retrieve a new VelocityTracker object to watch the velocity of a motion.
                         mVelocityTracker = VelocityTracker.obtain();
+                        float x = event.getX();// + noteContents.getScrollX();
+                        float y = event.getY();// + noteContents.getScrollY();
+                        String content = noteContents.getText().toString();
+                        int spaceidx = content.trim().lastIndexOf(" ");
+                        if (spaceidx > 0){
+                            correction = content.trim().substring(spaceidx+1);
+                            spaceidx = content.lastIndexOf(correction);
+                        }
+                        //if there is text
+                        if (spaceidx >= 0) {
+                            float wordlen = getWordWidth(correction);
+                            float wordendX = getLastLineWidth(wordlen);
+                            float wordstartX = wordendX-wordlen;
+                            float wordendY = getContentHeight();
+                            float wordstartY = wordendY-getLineHeight();
+
+                            if (x <= wordendX+30 && x >= wordstartX-30
+                                    && y >= wordstartY-30 && y <= wordendY+30) {
+                                correction_begin = true;
+//                                Log.e(TAG, "start correction! on " + correction);
+//                            Log.e(TAG, "scroll Y "+scrollview.getScrollY());
+//                            Log.e(TAG, "last line width: "+ getLastLineWidth(getWordWidth(correction)) + " overall height "+getContentHeight());
+//                            Log.e(TAG, "last line top: "+ (getContentHeight()-getLineHeight()) + " last word start "+(getLastLineWidth(getWordWidth(correction))-getWordWidth(correction)));
+//                            Log.e(TAG, "touch x "+x + " y "+y);
+                            }
+                        }
                     }
                     else {
                         // Reset the velocity tracker back to its initial state.
@@ -555,47 +592,107 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                     mVelocityTracker.addMovement(event);
                     break;
                 case MotionEvent.ACTION_MOVE:
+                    if (!correction_begin) break;
+
                     mVelocityTracker.addMovement(event);
                     mVelocityTracker.computeCurrentVelocity(1000); //pixel / sec
                     float vx = mVelocityTracker.getXVelocity();
                     float vy = mVelocityTracker.getYVelocity();
 
-                    if (vx*vx+vy*vy < 10){
+                    if (vx*vx+vy*vy < 10e5){
                         int offset = getTextIndexOfEvent(event);
                         String content = noteContents.getText().toString();
                         int cursor_pos = noteContents.getSelectionStart();
                         noteContents.setText(getHighlightStringOnIndex(content, offset));
                         noteContents.setSelection(cursor_pos);
+                        magnifier.show(event.getX(), event.getY()-30);
                     } else {
                         span_begin = -1;
                         span_end = -1;
-                        touching_still = false;
-                        still_touch_start = -1;
                         int cursor_pos = noteContents.getSelectionStart();
                         noteContents.setText(noteContents.getText().toString());
+                        magnifier.dismiss();
                         noteContents.setSelection(cursor_pos);
                     }
-
                     break;
 
                 case MotionEvent.ACTION_UP:
                     releaseVelocityTracker();
+
+                    if (correction_begin && correction != null && span_begin >= 0){
+                        replaceWithAnimation();
+                    } else {
+                        noteContents.setText(noteContents.getText().toString());
+                        noteContents.setSelection(noteContents.getText().length());
+                    }
+                    magnifier.dismiss();
+                    correction = null;
+                    correction_begin = false;
                     break;
                 case MotionEvent.ACTION_CANCEL:
                     // Return a VelocityTracker object back to be re-used by others.
                     releaseVelocityTracker();
+                    magnifier.dismiss();
+                    correction_begin = false;
                     break;
             }
         }
         return false;
     }
 
+    /**
+     * compute text and related pixel value
+     */
+
+    private float getContentHeight() {
+        return noteContents.getLayout().getHeight();
+    }
+
+    private float getLastLineWidth(float wordlen) {
+        int lines =  noteContents.getLineCount();
+        for (int line = lines-1; line >= 0; line--) {
+            float wid = noteContents.getLayout().getLineWidth(line);
+                if (wid > wordlen) return wid;
+        }
+        return 0;
+    }
+
+    private float getWordWidth(String word) {
+        return noteContents.getPaint().measureText(word);
+    }
+
+    private float getLineHeight() {
+        return noteContents.getLayout().getHeight()/noteContents.getLineCount();
+    }
+
     private int getTextIndexOfEvent(MotionEvent event) {
         Layout layout = noteContents.getLayout();
         float x = event.getX() + noteContents.getScrollX();
         float y = event.getY() + noteContents.getScrollY();
+        y = Math.max(y-50, 0); //offset
         int line = layout.getLineForVertical((int) y);
         return layout.getOffsetForHorizontal( line,  x);
+    }
+
+    private void replaceWithAnimation() {
+        String content = noteContents.getText().toString();
+        int lastidx = content.lastIndexOf(correction);
+        content = content.substring(0, lastidx);
+        String newcontent = content.substring(0, span_begin)+correction+content.substring(span_end);
+        span_end = span_begin+correction.length();
+        ValueAnimator valueAnimator = ValueAnimator.ofArgb(0xffff6600,0xff000000);
+        SpannableStringBuilder sb = new SpannableStringBuilder(newcontent);
+        valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                sb.setSpan(new ForegroundColorSpan((Integer)animation.getAnimatedValue()), span_begin, span_end, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+                noteContents.setText(sb);
+                noteContents.setSelection(noteContents.getText().length());
+            }
+        });
+
+        valueAnimator.setDuration(500);
+        valueAnimator.start();
     }
 
     //use magnifier if the android version is above P

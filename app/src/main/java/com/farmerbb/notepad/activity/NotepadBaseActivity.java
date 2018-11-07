@@ -37,8 +37,8 @@ public abstract class NotepadBaseActivity extends AppCompatActivity {
             getWindow().setNavigationBarColor(ContextCompat.getColor(this, navbarColorId));
             findViewById(Window.ID_ANDROID_CONTENT).setSystemUiVisibility(sysUiVisibility);
 
-//            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-//                getWindow().setNavigationBarDividerColor(ContextCompat.getColor(this, navbarDividerColorId));
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                getWindow().setNavigationBarDividerColor(ContextCompat.getColor(this, navbarDividerColorId));
         }
     }
 }

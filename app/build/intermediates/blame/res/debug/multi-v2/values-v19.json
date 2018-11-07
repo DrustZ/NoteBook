@@ -1,0 +1,28 @@
+{
+    "logs": [
+        {
+            "outputFile": "E:\\Research\\Notebook\\app\\build\\intermediates\\incremental\\mergeDebugResources\\merged.dir\\values-v19\\values-v19.xml",
+            "map": [
+                {
+                    "source": "E:\\Research\\Notebook\\app\\src\\main\\res\\values-v19\\styles_notepad.xml",
+                    "from": {
+                        "startLines": "20",
+                        "startColumns": "4",
+                        "startOffsets": "692",
+                        "endLines": "22",
+                        "endColumns": "12",
+                        "endOffsets": "828"
+                    },
+                    "to": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "4",
+                        "endColumns": "12",
+                        "endOffsets": "189"
+                    }
+                }
+            ]
+        }
+    ]
+}
