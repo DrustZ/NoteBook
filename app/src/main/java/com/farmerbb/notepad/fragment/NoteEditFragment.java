@@ -286,7 +286,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         // Show soft keyboard
         InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.showSoftInput(noteContents, InputMethodManager.SHOW_IMPLICIT);
-
     }
 
     @Override
@@ -583,6 +582,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                             if (x <= wordendX+30 && x >= wordstartX-30
                                     && y >= wordstartY-30 && y <= wordendY+30) {
                                 correction_begin = true;
+                                InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+                                imm.hideSoftInputFromWindow(noteContents.getWindowToken(), 0);
 //                                Log.e(TAG, "start correction! on " + correction);
 //                            Log.e(TAG, "scroll Y "+scrollview.getScrollY());
 //                            Log.e(TAG, "last line width: "+ getLastLineWidth(getWordWidth(correction)) + " overall height "+getContentHeight());
@@ -686,17 +687,17 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         String content = noteContents.getText().toString();
         int lastidx = content.lastIndexOf(correction);
         content = content.substring(0, lastidx);
+        if (span_end >= content.length()){
+            return;
+        }
         String newcontent = content.substring(0, span_begin)+correction+content.substring(span_end);
         span_end = span_begin+correction.length();
         ValueAnimator valueAnimator = ValueAnimator.ofArgb(0xffff6600,0xff000000);
         SpannableStringBuilder sb = new SpannableStringBuilder(newcontent);
-        valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
+        valueAnimator.addUpdateListener((ValueAnimator animation) -> {
                 sb.setSpan(new ForegroundColorSpan((Integer)animation.getAnimatedValue()), span_begin, span_end, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
                 noteContents.setText(sb);
                 noteContents.setSelection(noteContents.getText().length());
-            }
         });
 
         valueAnimator.setDuration(500);
@@ -754,9 +755,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(FloatingButtonService.FLOAT_BUTTON_INTENT)) {
-                int x = intent.getIntExtra("x", 0);
-                int y = intent.getIntExtra("y", 0);
-                Log.e(TAG, "current x y : " + x + ' ' + y);
             }}
     }
 
