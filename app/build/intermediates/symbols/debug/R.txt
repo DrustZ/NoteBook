@@ -771,11 +771,12 @@ int drawable notification_template_icon_bg 0x7f080076
 int drawable notification_template_icon_low_bg 0x7f080077
 int drawable notification_tile_bg 0x7f080078
 int drawable notify_panel_notification_icon_bg 0x7f080079
-int drawable selectable_background 0x7f08007a
-int drawable shortcut_icon 0x7f08007b
-int drawable shortcut_icon_background 0x7f08007c
-int drawable tooltip_frame_dark 0x7f08007d
-int drawable tooltip_frame_light 0x7f08007e
+int drawable round_button 0x7f08007a
+int drawable selectable_background 0x7f08007b
+int drawable shortcut_icon 0x7f08007c
+int drawable shortcut_icon_background 0x7f08007d
+int drawable tooltip_frame_dark 0x7f08007e
+int drawable tooltip_frame_light 0x7f08007f
 int id ALT 0x7f090000
 int id CTRL 0x7f090001
 int id FUNCTION 0x7f090002

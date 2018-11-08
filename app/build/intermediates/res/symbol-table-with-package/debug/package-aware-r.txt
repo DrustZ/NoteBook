@@ -772,6 +772,7 @@ drawable notification_template_icon_bg
 drawable notification_template_icon_low_bg
 drawable notification_tile_bg
 drawable notify_panel_notification_icon_bg
+drawable round_button
 drawable selectable_background
 drawable shortcut_icon
 drawable shortcut_icon_background

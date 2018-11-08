@@ -15,6 +15,11 @@
 
 package com.farmerbb.notepad.activity;
 
+import android.content.ComponentName;
+import android.content.ServiceConnection;
+import android.net.Uri;
+import android.os.IBinder;
+import android.provider.Settings;
 import android.support.v4.app.Fragment;
 import android.content.Context;
 import android.content.Intent;
@@ -23,6 +28,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -33,6 +39,7 @@ import com.farmerbb.notepad.fragment.NoteEditFragment;
 import com.farmerbb.notepad.fragment.dialog.BackButtonDialogFragment;
 import com.farmerbb.notepad.fragment.dialog.DeleteDialogFragment;
 import com.farmerbb.notepad.fragment.dialog.SaveButtonDialogFragment;
+import com.farmerbb.notepad.service.FloatingButtonService;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -43,7 +50,7 @@ DeleteDialogFragment.Listener,
 SaveButtonDialogFragment.Listener, 
 NoteEditFragment.Listener {
 
-String external;
+    String external;
 
     @Override
     public boolean isShareIntent() {
@@ -54,7 +61,6 @@ String external;
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_note_edit);
-
         // Apply theme
         SharedPreferences pref = getSharedPreferences(getPackageName() + "_preferences", Context.MODE_PRIVATE);
         String theme = pref.getString("theme", "light-sans");

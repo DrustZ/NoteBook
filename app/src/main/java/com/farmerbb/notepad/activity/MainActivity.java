@@ -22,6 +22,7 @@ import android.content.ClipData;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
+import android.provider.Settings;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
@@ -35,6 +36,7 @@ import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.provider.DocumentFile;
 import android.util.Base64;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -49,6 +51,7 @@ import com.farmerbb.notepad.fragment.dialog.BackButtonDialogFragment;
 import com.farmerbb.notepad.fragment.dialog.DeleteDialogFragment;
 import com.farmerbb.notepad.fragment.dialog.FirstRunDialogFragment;
 import com.farmerbb.notepad.fragment.dialog.SaveButtonDialogFragment;
+import com.farmerbb.notepad.service.FloatingButtonService;
 import com.farmerbb.notepad.util.WebViewInitState;
 
 import org.apache.commons.lang3.StringUtils;
@@ -88,6 +91,13 @@ NoteViewFragment.Listener {
     public static final int IMPORT = 42;
     public static final int EXPORT = 43;
     public static final int EXPORT_TREE = 44;
+    public static final int FLOAT_REQUEST = 45;
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        stopFloatingButtonService();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -192,7 +202,7 @@ NoteViewFragment.Listener {
     @Override
     protected void onResume() {
         super.onResume();
-
+        startFloatingButtonService();
         WebViewInitState wvState = WebViewInitState.getInstance();
         wvState.initialize(this);
     }
@@ -596,8 +606,14 @@ NoteViewFragment.Listener {
     @TargetApi(Build.VERSION_CODES.KITKAT)
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
-
-        if(resultCode == RESULT_OK && resultData != null) {
+        if (requestCode == FLOAT_REQUEST) {
+            if (!Settings.canDrawOverlays(this)) {
+                Toast.makeText(this, "Permission failed", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Permission granted", Toast.LENGTH_SHORT).show();
+                startFloatingButtonService();
+            }
+        } else if(resultCode == RESULT_OK && resultData != null) {
             successful = true;
 
             if(requestCode == IMPORT) {
@@ -841,5 +857,25 @@ NoteViewFragment.Listener {
     @Override
     public ArrayList<String> getCabArray() {
         return cab;
+    }
+
+
+    // float button
+    public void startFloatingButtonService() {
+        if (FloatingButtonService.isStarted) {
+            return;
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "Requesting permission...", Toast.LENGTH_SHORT);
+            startActivityForResult(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())), 0);
+        } else {
+            startService(new Intent(this, FloatingButtonService.class));
+        }
+    }
+
+    public void stopFloatingButtonService() {
+        if (FloatingButtonService.isStarted) {
+            stopService(new Intent(this, FloatingButtonService.class));
+        }
     }
 }

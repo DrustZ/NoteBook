@@ -26,6 +26,8 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
+import android.provider.Settings;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.content.BroadcastReceiver;
@@ -66,6 +68,7 @@ import android.widget.Toast;
 
 import com.farmerbb.notepad.activity.MainActivity;
 import com.farmerbb.notepad.R;
+import com.farmerbb.notepad.service.FloatingButtonService;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -83,13 +86,11 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     private Magnifier magnifier = null;
     private ScrollView scrollview = null;
     private VelocityTracker mVelocityTracker = null;
-    private boolean touching_still = false;
-    private long still_touch_start = -1;
-    private long still_threshold = 50;
     private boolean correction_begin = false; // if entered the correction mode
     private int span_begin = -1;
     private int span_end = -1;
     private String correction = null;
+    private FloatButtonReceiver floatButtonReceiver = null;
 
     String filename = String.valueOf(System.currentTimeMillis());
     String contentsOnLoad = "";
@@ -314,6 +315,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                 showToast(R.string.draft_saved);
             }
         }
+
+        if (floatButtonReceiver != null) getActivity().unregisterReceiver(floatButtonReceiver);
     }
 
     @Override
@@ -378,6 +381,9 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
         SharedPreferences pref = getActivity().getSharedPreferences(getActivity().getPackageName() + "_preferences", Context.MODE_PRIVATE);
         directEdit = pref.getBoolean("direct_edit", false);
+
+        if (floatButtonReceiver == null) floatButtonReceiver = new FloatButtonReceiver();
+        getActivity().registerReceiver(floatButtonReceiver, new IntentFilter(FloatingButtonService.FLOAT_BUTTON_INTENT));
     }
 
     // Register and unregister DeleteNotesReceiver
@@ -618,7 +624,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
                 case MotionEvent.ACTION_UP:
                     releaseVelocityTracker();
-
+                    if (!correction_begin) break;
                     if (correction_begin && correction != null && span_begin >= 0){
                         replaceWithAnimation();
                     } else {
@@ -632,6 +638,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                 case MotionEvent.ACTION_CANCEL:
                     // Return a VelocityTracker object back to be re-used by others.
                     releaseVelocityTracker();
+                    if (!correction_begin) break;
                     magnifier.dismiss();
                     correction_begin = false;
                     break;
@@ -643,7 +650,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     /**
      * compute text and related pixel value
      */
-
     private float getContentHeight() {
         return noteContents.getLayout().getHeight();
     }
@@ -674,6 +680,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         return layout.getOffsetForHorizontal( line,  x);
     }
 
+    /** animation and string effects
+      */
     private void replaceWithAnimation() {
         String content = noteContents.getText().toString();
         int lastidx = content.lastIndexOf(correction);
@@ -737,6 +745,19 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         // Set the text color for first 4 characters
         sb.setSpan(bcs, span_begin, span_end, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
         return sb;
+    }
+
+    /**
+     * Float button interactions
+     */
+    private class FloatButtonReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(FloatingButtonService.FLOAT_BUTTON_INTENT)) {
+                int x = intent.getIntExtra("x", 0);
+                int y = intent.getIntExtra("y", 0);
+                Log.e(TAG, "current x y : " + x + ' ' + y);
+            }}
     }
 
     private void releaseVelocityTracker() { if (null != mVelocityTracker) { mVelocityTracker.clear(); mVelocityTracker.recycle(); mVelocityTracker = null; } }
