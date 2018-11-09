@@ -50,6 +50,7 @@ import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -63,7 +64,9 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Magnifier;
+import android.widget.PopupWindow;
 import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.farmerbb.notepad.activity.MainActivity;
@@ -74,11 +77,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import static android.view.Gravity.NO_GRAVITY;
+
 public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
     final String TAG = "[Log]";
     private EditText noteContents;
-
 
     /**
      * touch related vars
@@ -91,6 +95,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     private int span_end = -1;
     private String correction = null;
     private FloatButtonReceiver floatButtonReceiver = null;
+    private PopupWindow popupWindow = null;
+    private TextView indiactorView = null;
 
     String filename = String.valueOf(System.currentTimeMillis());
     String contentsOnLoad = "";
@@ -282,6 +288,14 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
         //apply touch listener
         noteContents.setOnTouchListener(this);
+        indiactorView = new TextView(this.getContext());
+        indiactorView.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+        indiactorView.setTypeface(Typeface.SERIF, Typeface.BOLD);
+        indiactorView.setTextSize(18);
+        indiactorView.setTextColor(0xbf339966);
+        popupWindow = new PopupWindow(indiactorView);
+        Log.e(TAG, "get width of magnifier "+magnifier.getHeight() );
+        popupWindow.setFocusable(false);
 
         // Show soft keyboard
         InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -569,6 +583,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                         int spaceidx = content.trim().lastIndexOf(" ");
                         if (spaceidx > 0){
                             correction = content.trim().substring(spaceidx+1);
+                            indiactorView.setText(correction);
                             spaceidx = content.lastIndexOf(correction);
                         }
                         //if there is text
@@ -579,12 +594,11 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                             float wordendY = getContentHeight();
                             float wordstartY = wordendY-getLineHeight();
 
-                            if (x <= wordendX+30 && x >= wordstartX-30
-                                    && y >= wordstartY-30 && y <= wordendY+30) {
-                                correction_begin = true;
+                            if (x <= wordendX+100 && x >= wordstartX-50
+                                    && y >= wordstartY-40 && y <= wordendY+100) {
+                                correction_begin = true;//                                Log.e(TAG, "start correction! on " + correction);
                                 InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
                                 imm.hideSoftInputFromWindow(noteContents.getWindowToken(), 0);
-//                                Log.e(TAG, "start correction! on " + correction);
 //                            Log.e(TAG, "scroll Y "+scrollview.getScrollY());
 //                            Log.e(TAG, "last line width: "+ getLastLineWidth(getWordWidth(correction)) + " overall height "+getContentHeight());
 //                            Log.e(TAG, "last line top: "+ (getContentHeight()-getLineHeight()) + " last word start "+(getLastLineWidth(getWordWidth(correction))-getWordWidth(correction)));
@@ -613,6 +627,12 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                         noteContents.setText(getHighlightStringOnIndex(content, offset));
                         noteContents.setSelection(cursor_pos);
                         magnifier.show(event.getX(), event.getY()-30);
+                        if (popupWindow.isShowing()){
+                            popupWindow.update( (int)event.getRawX()-(magnifier.getWidth()-20)/2, (int)(event.getRawY()-150-magnifier.getHeight()),
+                                    magnifier.getWidth()-20, magnifier.getHeight()-10);
+                        } else {
+                            popupWindow.showAtLocation(noteContents, NO_GRAVITY, (int)event.getRawX()-(magnifier.getWidth()-20)/2, (int)(event.getRawY()-150-magnifier.getHeight()));
+                        }
                     } else {
                         span_begin = -1;
                         span_end = -1;
@@ -632,6 +652,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                         noteContents.setText(noteContents.getText().toString());
                         noteContents.setSelection(noteContents.getText().length());
                     }
+                    popupWindow.dismiss();
                     magnifier.dismiss();
                     correction = null;
                     correction_begin = false;
@@ -640,6 +661,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                     // Return a VelocityTracker object back to be re-used by others.
                     releaseVelocityTracker();
                     if (!correction_begin) break;
+                    popupWindow.dismiss();
                     magnifier.dismiss();
                     correction_begin = false;
                     break;
@@ -709,6 +731,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     //https://medium.com/google-developer-experts/exploring-android-p-magnifier-ddfd06bdecbe
     private SpannableStringBuilder getHighlightStringOnIndex(String content, int index) {
         SpannableStringBuilder sb = new SpannableStringBuilder(content);
+
         if (index >= content.length()) {
             span_begin = -1;
             span_end = -1;
@@ -739,6 +762,13 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         }
         if (span_begin == -1) span_begin = 0;
         if (span_end == -1) span_end = content.length();
+
+        //we don't highlight the correction itself
+        if (content.lastIndexOf(correction) == span_begin){
+            span_end = -1;
+            span_begin = -1;
+            return sb;
+        }
 
         // Span to set text color to some RGB value
         BackgroundColorSpan bcs = new BackgroundColorSpan(Color.rgb(255, 255, 51));
