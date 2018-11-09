@@ -60,6 +60,7 @@ import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -97,6 +98,9 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     private FloatButtonReceiver floatButtonReceiver = null;
     private PopupWindow popupWindow = null;
     private TextView indiactorView = null;
+    // Span to set text color to some RGB value
+    BackgroundColorSpan bcs = new BackgroundColorSpan(Color.rgb(255, 255, 51));
+    SpannableStringBuilder sb = new SpannableStringBuilder();
 
     String filename = String.valueOf(System.currentTimeMillis());
     String contentsOnLoad = "";
@@ -294,7 +298,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         indiactorView.setTextSize(18);
         indiactorView.setTextColor(0xbf339966);
         popupWindow = new PopupWindow(indiactorView);
-        Log.e(TAG, "get width of magnifier "+magnifier.getHeight() );
         popupWindow.setFocusable(false);
 
         // Show soft keyboard
@@ -620,11 +623,13 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                     float vx = mVelocityTracker.getXVelocity();
                     float vy = mVelocityTracker.getYVelocity();
 
-                    if (vx*vx+vy*vy < 10e5){
+                    if (Math.sqrt(vx*vx+vy*vy) < 200){
                         int offset = getTextIndexOfEvent(event);
                         String content = noteContents.getText().toString();
                         int cursor_pos = noteContents.getSelectionStart();
-                        noteContents.setText(getHighlightStringOnIndex(content, offset));
+                        if (getHighlightStringOnIndex(content, offset)) {
+                            noteContents.setText(sb);
+                        }
                         noteContents.setSelection(cursor_pos);
                         magnifier.show(event.getX(), event.getY()-30);
                         if (popupWindow.isShowing()){
@@ -714,11 +719,14 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         }
         String newcontent = content.substring(0, span_begin)+correction+content.substring(span_end);
         span_end = span_begin+correction.length();
+        //create a tmp value incase the internal attributes get changed during animation
+        int sbegin = span_begin;
+        int send = span_end;
         ValueAnimator valueAnimator = ValueAnimator.ofArgb(0xffff6600,0xff000000);
-        SpannableStringBuilder sb = new SpannableStringBuilder(newcontent);
+        SpannableStringBuilder sban = new SpannableStringBuilder(newcontent);
         valueAnimator.addUpdateListener((ValueAnimator animation) -> {
-                sb.setSpan(new ForegroundColorSpan((Integer)animation.getAnimatedValue()), span_begin, span_end, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
-                noteContents.setText(sb);
+                sban.setSpan(new ForegroundColorSpan((Integer)animation.getAnimatedValue()), sbegin, send, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+                noteContents.setText(sban);
                 noteContents.setSelection(noteContents.getText().length());
         });
 
@@ -729,26 +737,33 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     //use magnifier if the android version is above P
     // background works horrible...
     //https://medium.com/google-developer-experts/exploring-android-p-magnifier-ddfd06bdecbe
-    private SpannableStringBuilder getHighlightStringOnIndex(String content, int index) {
-        SpannableStringBuilder sb = new SpannableStringBuilder(content);
+    //return : false: don't change true: change
+    private boolean getHighlightStringOnIndex(String content, int index) {
 
         if (index >= content.length()) {
             span_begin = -1;
             span_end = -1;
-            return sb;
+            return false;
         }
 
         char c = content.charAt(index);
         if (!Character.isLetter(c) && !Character.isDigit(c)) {
+            //if it's space but there's character before , then maybe the user wants to replace , but the word is too short to select
+            if (c > 0 && Character.isLetter(c-1)){
+                return false;
+            }
             span_begin = -1;
             span_end = -1;
-            return sb;
+            return false;
         }
+
+        int tmp_span_begin = index;
+        int tmp_span_end = index;
 
         for (int i = index - 1; i >= 0; i--) {
             c = content.charAt(i);
             if (!Character.isLetter(c) && !Character.isDigit(c)) {
-                span_begin = i + 1;
+                tmp_span_begin = i + 1;
                 break;
             }
         }
@@ -756,26 +771,31 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         for (int i = index + 1; i < content.length(); i++) {
             c = content.charAt(i);
             if (!Character.isLetter(c) && !Character.isDigit(c)) {
-                span_end = i;
+                tmp_span_end = i;
                 break;
             }
         }
-        if (span_begin == -1) span_begin = 0;
-        if (span_end == -1) span_end = content.length();
+        if (tmp_span_begin == -1) tmp_span_begin = 0;
+        if (tmp_span_end == -1) tmp_span_end = content.length();
 
         //we don't highlight the correction itself
-        if (content.lastIndexOf(correction) == span_begin){
+        if (content.lastIndexOf(correction) == tmp_span_begin){
             span_end = -1;
             span_begin = -1;
-            return sb;
+            return false;
         }
 
-        // Span to set text color to some RGB value
-        BackgroundColorSpan bcs = new BackgroundColorSpan(Color.rgb(255, 255, 51));
+        //the higlight span doens't change
+        if (span_begin == tmp_span_begin && span_end == tmp_span_end)
+            return false;
 
+        sb.clear();
+        sb.append(content);
+        span_begin = tmp_span_begin;
+        span_end = tmp_span_end;
         // Set the text color for first 4 characters
         sb.setSpan(bcs, span_begin, span_end, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
-        return sb;
+        return true;
     }
 
     /**
