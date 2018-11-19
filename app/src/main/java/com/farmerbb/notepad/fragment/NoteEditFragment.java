@@ -27,6 +27,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.provider.Settings;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
@@ -74,9 +75,19 @@ import com.farmerbb.notepad.activity.MainActivity;
 import com.farmerbb.notepad.R;
 import com.farmerbb.notepad.service.FloatingButtonService;
 
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 import static android.view.Gravity.NO_GRAVITY;
 
@@ -85,15 +96,25 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     final String TAG = "[Log]";
     private EditText noteContents;
 
+    //post
+    public static final MediaType JSON
+            = MediaType.parse("application/json; charset=utf-8");
+
+    OkHttpClient client = new OkHttpClient();
+
     /**
      * touch related vars
      */
+    private String correct_option = "drag";
     private Magnifier magnifier = null;
-    private ScrollView scrollview = null;
     private VelocityTracker mVelocityTracker = null;
     private boolean correction_begin = false; // if entered the correction mode
     private int span_begin = -1;
     private int span_end = -1;
+    private int sent_begin = -1;
+    private int sent_end = -1;
+
+
     private String correction = null;
     private FloatButtonReceiver floatButtonReceiver = null;
     private PopupWindow popupWindow = null;
@@ -209,7 +230,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         // Set up content view
         noteContents = getActivity().findViewById(R.id.editText1);
         magnifier = new Magnifier(noteContents);
-        scrollview = getActivity().findViewById(R.id.scrollView1);
         // Apply theme
         SharedPreferences pref = getActivity().getSharedPreferences(getActivity().getPackageName() + "_preferences", Context.MODE_PRIVATE);
         ScrollView scrollView = getActivity().findViewById(R.id.scrollView1);
@@ -397,9 +417,12 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
         SharedPreferences pref = getActivity().getSharedPreferences(getActivity().getPackageName() + "_preferences", Context.MODE_PRIVATE);
         directEdit = pref.getBoolean("direct_edit", false);
-
-        if (floatButtonReceiver == null) floatButtonReceiver = new FloatButtonReceiver();
-        getActivity().registerReceiver(floatButtonReceiver, new IntentFilter(FloatingButtonService.FLOAT_BUTTON_INTENT));
+        correct_option = pref.getString("correction_method", "drag");
+        Log.e(TAG, "Correction method " +correct_option );
+        if (correct_option.equals("smart")) {
+            if (floatButtonReceiver == null) floatButtonReceiver = new FloatButtonReceiver();
+            getActivity().registerReceiver(floatButtonReceiver, new IntentFilter(FloatingButtonService.FLOAT_BUTTON_INTENT));
+        }
     }
 
     // Register and unregister DeleteNotesReceiver
@@ -577,102 +600,218 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         if (v == noteContents) {
             switch (event.getAction()){
                 case MotionEvent.ACTION_DOWN:
-                    if(mVelocityTracker == null) {
-                        // Retrieve a new VelocityTracker object to watch the velocity of a motion.
-                        mVelocityTracker = VelocityTracker.obtain();
-                        float x = event.getX();// + noteContents.getScrollX();
-                        float y = event.getY();// + noteContents.getScrollY();
-                        String content = noteContents.getText().toString();
-                        int spaceidx = content.trim().lastIndexOf(" ");
-                        if (spaceidx > 0){
-                            correction = content.trim().substring(spaceidx+1);
-                            indiactorView.setText(correction);
-                            spaceidx = content.lastIndexOf(correction);
-                        }
-                        //if there is text
-                        if (spaceidx >= 0) {
-                            float wordlen = getWordWidth(correction);
-                            float wordendX = getLastLineWidth(wordlen);
-                            float wordstartX = wordendX-wordlen;
-                            float wordendY = getContentHeight();
-                            float wordstartY = wordendY-getLineHeight();
+                    correction = null;
+                    if (correct_option.equals("drag") || correct_option.equals("plain")) {
+                        if (mVelocityTracker == null) {
+                            // Retrieve a new VelocityTracker object to watch the velocity of a motion.
+                            mVelocityTracker = VelocityTracker.obtain();
 
-                            if (x <= wordendX+100 && x >= wordstartX-50
-                                    && y >= wordstartY-40 && y <= wordendY+100) {
-                                correction_begin = true;//                                Log.e(TAG, "start correction! on " + correction);
-                                InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
-                                imm.hideSoftInputFromWindow(noteContents.getWindowToken(), 0);
-//                            Log.e(TAG, "scroll Y "+scrollview.getScrollY());
-//                            Log.e(TAG, "last line width: "+ getLastLineWidth(getWordWidth(correction)) + " overall height "+getContentHeight());
-//                            Log.e(TAG, "last line top: "+ (getContentHeight()-getLineHeight()) + " last word start "+(getLastLineWidth(getWordWidth(correction))-getWordWidth(correction)));
-//                            Log.e(TAG, "touch x "+x + " y "+y);
+                            float x = event.getX();// + noteContents.getScrollX();
+                            float y = event.getY();// + noteContents.getScrollY();
+                            String content = noteContents.getText().toString();
+                            int spaceidx = content.trim().lastIndexOf(" ");
+                            if (spaceidx > 0) {
+                                correction = content.trim().substring(spaceidx + 1);
+                                indiactorView.setText(correction);
+                                spaceidx = content.lastIndexOf(correction);
                             }
+
+                            //if there is text
+                            if (spaceidx >= 0) {
+                                float wordlen = getWordWidth(correction);
+                                float wordendX = getLastLineWidth(wordlen);
+                                float wordstartX = wordendX - wordlen;
+                                float wordendY = getContentHeight();
+                                float wordstartY = wordendY - getLineHeight();
+
+                                if (x <= wordendX + 100 && x >= wordstartX - 50
+                                        && y >= wordstartY - 40 && y <= wordendY + 100) {
+                                    correction_begin = true;
+                                    Log.e(TAG, "start correction! on " + correction);
+                                    InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+                                    imm.hideSoftInputFromWindow(noteContents.getWindowToken(), 0);
+                                    //                            Log.e(TAG, "scroll Y "+scrollview.getScrollY());
+                                    //                            Log.e(TAG, "last line width: "+ getLastLineWidth(getWordWidth(correction)) + " overall height "+getContentHeight());
+                                    //                            Log.e(TAG, "last line top: "+ (getContentHeight()-getLineHeight()) + " last word start "+(getLastLineWidth(getWordWidth(correction))-getWordWidth(correction)));
+                                    //                            Log.e(TAG, "touch x "+x + " y "+y);
+                                }
+                            }
+                            mVelocityTracker.addMovement(event);
+                        } else {
+                            // Reset the velocity tracker back to its initial state.
+                            mVelocityTracker.clear();
                         }
                     }
-                    else {
-                        // Reset the velocity tracker back to its initial state.
-                        mVelocityTracker.clear();
-                    }
-                    mVelocityTracker.addMovement(event);
                     break;
                 case MotionEvent.ACTION_MOVE:
-                    if (!correction_begin) break;
+                    if (correct_option.equals("plain") || correct_option.equals("drag")) {
+                        if (!correction_begin) break;
 
-                    mVelocityTracker.addMovement(event);
-                    mVelocityTracker.computeCurrentVelocity(1000); //pixel / sec
-                    float vx = mVelocityTracker.getXVelocity();
-                    float vy = mVelocityTracker.getYVelocity();
-
-                    if (Math.sqrt(vx*vx+vy*vy) < 200){
-                        int offset = getTextIndexOfEvent(event);
-                        String content = noteContents.getText().toString();
-                        int cursor_pos = noteContents.getSelectionStart();
-                        if (getHighlightStringOnIndex(content, offset)) {
-                            noteContents.setText(sb);
-                        }
-                        noteContents.setSelection(cursor_pos);
-                        magnifier.show(event.getX(), event.getY()-30);
-                        if (popupWindow.isShowing()){
-                            popupWindow.update( (int)event.getRawX()-(magnifier.getWidth()-20)/2, (int)(event.getRawY()-150-magnifier.getHeight()),
-                                    magnifier.getWidth()-20, magnifier.getHeight()-10);
+                        mVelocityTracker.addMovement(event);
+                        mVelocityTracker.computeCurrentVelocity(1000); //pixel / sec
+                        float vx = mVelocityTracker.getXVelocity();
+                        float vy = mVelocityTracker.getYVelocity();
+                        if (Math.sqrt(vx * vx + vy * vy) < 1000) {
+                            int offset = getTextIndexOfEvent(event, 50);
+                            String content = noteContents.getText().toString();
+                            int cursor_pos = noteContents.getSelectionStart();
+                            if (getHighlightStringOnIndex(content, offset)) {
+                                noteContents.setText(sb);
+                            }
+                            noteContents.setSelection(cursor_pos);
+                            magnifier.show(event.getX(), event.getY() - 30);
+                            if (popupWindow.isShowing()) {
+                                popupWindow.update((int) event.getRawX() - (magnifier.getWidth() - 20) / 2, (int) (event.getRawY() - 150 - magnifier.getHeight()),
+                                        magnifier.getWidth() - 20, magnifier.getHeight() - 10);
+                            } else {
+                                popupWindow.showAtLocation(noteContents, NO_GRAVITY, (int) event.getRawX() - (magnifier.getWidth() - 20) / 2, (int) (event.getRawY() - 150 - magnifier.getHeight()));
+                            }
                         } else {
-                            popupWindow.showAtLocation(noteContents, NO_GRAVITY, (int)event.getRawX()-(magnifier.getWidth()-20)/2, (int)(event.getRawY()-150-magnifier.getHeight()));
+                            span_begin = -1;
+                            span_end = -1;
+                            int cursor_pos = noteContents.getSelectionStart();
+                            noteContents.setText(noteContents.getText().toString());
+                            magnifier.dismiss();
+                            noteContents.setSelection(cursor_pos);
                         }
-                    } else {
-                        span_begin = -1;
-                        span_end = -1;
-                        int cursor_pos = noteContents.getSelectionStart();
-                        noteContents.setText(noteContents.getText().toString());
-                        magnifier.dismiss();
-                        noteContents.setSelection(cursor_pos);
                     }
                     break;
 
                 case MotionEvent.ACTION_UP:
-                    releaseVelocityTracker();
-                    if (!correction_begin) break;
-                    if (correction_begin && correction != null && span_begin >= 0){
-                        replaceWithAnimation();
-                    } else {
-                        noteContents.setText(noteContents.getText().toString());
-                        noteContents.setSelection(noteContents.getText().length());
+                    if (correct_option.equals("plain")) {
+                        if (!correction_begin) break;
+                        if (correction_begin && correction != null && span_begin >= 0) {
+                            replaceWithAnimation();
+                        } else {
+                            noteContents.setText(noteContents.getText().toString());
+                            noteContents.setSelection(noteContents.getText().length());
+                        }
+                    } else if (correct_option.equals("drag")) {
+                        // get up position x y
+                        if (!correction_begin) break;
+                        int offset1 = getTextIndexOfEvent(event, 60); //line 0
+                        int offset2 = getTextIndexOfEvent(event, 0); //line 1
+                        int offset3 = getTextIndexOfEvent(event, -60); //line 2
+                        String content = noteContents.getText().toString();
+                        List<Integer> offsets = new ArrayList<Integer>();
+                        offsets.add(offset1);
+                        if (offset1 != offset2) { offsets.add(offset2); }
+                        if (offset2 != offset3) { offsets.add(offset3); }
+                        ArrayList<String> arr = new ArrayList<String>();
+
+                        for (int i = 0; i < offsets.size(); ++i) {
+                            String s = getSurroudningTextOfIndex(content, offsets.get(i));
+                            if (s != null) {
+                                arr.add(s);
+                                arr.add(correction);
+                                arr.add(String.valueOf(sent_begin));
+                                arr.add(String.valueOf(sent_end));
+                            }
+                        }
+                        new PostCorrectionTask().execute(arr);
                     }
-                    popupWindow.dismiss();
-                    magnifier.dismiss();
-                    correction = null;
-                    correction_begin = false;
+                    endCorrection();
                     break;
                 case MotionEvent.ACTION_CANCEL:
-                    // Return a VelocityTracker object back to be re-used by others.
-                    releaseVelocityTracker();
-                    if (!correction_begin) break;
-                    popupWindow.dismiss();
-                    magnifier.dismiss();
-                    correction_begin = false;
+                    if (correct_option.equals("drag") || correct_option.equals("plain")) {
+                        // Return a VelocityTracker object back to be re-used by others.
+                        endCorrection();
+                    }
                     break;
             }
         }
         return false;
+    }
+
+    private void endCorrection() {
+        releaseVelocityTracker();
+        if (popupWindow != null)
+            popupWindow.dismiss();
+        if (magnifier != null)
+            magnifier.dismiss();
+        correction_begin = false;
+    }
+
+    /**
+     * Http call
+     */
+
+    class PostCorrectionTask extends AsyncTask<ArrayList<String>, Void, Void> {
+
+        private Exception exception;
+        float bestprob = 0;
+        String bestsent = null;
+        String bestcor_sent = null;
+        int bestsent_begin = -1;
+        int bestsent_end = -1;
+        int beststart = -1;
+        int bestlen = -1;
+
+        @Override
+        protected Void doInBackground(ArrayList<String>... arrays) {
+            try {
+                ArrayList<String> arr = arrays[0];
+                for (int i = 0; i < arr.size(); i += 4) {
+                    String sent = arr.get(i);
+                    String correction = arr.get(i+1);
+                    Log.e(TAG, "sending correction"+i+" : "+sent );
+
+                    int sent_begin = Integer.parseInt(arr.get(i+2));
+                    int sent_end = Integer.parseInt(arr.get(i+3));
+                    String jsonString = new JSONObject()
+                            .put("sent", sent)
+                            .put("correction", correction).toString();
+
+                    RequestBody body = RequestBody.create(JSON, jsonString);
+                    Request request = new Request.Builder()
+                            .url("http://192.168.1.10:8765")
+                            .post(body)
+                            .build();
+                    Response response = client.newCall(request).execute();
+                    JSONObject jsonObj = new JSONObject(response.body().string());
+
+                    int cor_start = jsonObj.getInt("start");
+                    int cor_len = jsonObj.getInt("len");
+                    float cor_prob = (float) jsonObj.getDouble("prob");
+                    Log.e(TAG, "start : " + cor_start + " len : " + cor_len + " prob : " + cor_prob);
+                    String cor_text = "";
+                    if (jsonObj.has("sent")) {
+                        cor_text = jsonObj.getString("sent");
+                        Log.e(TAG, "corrected to :" + cor_text);
+                    }
+
+                    if (cor_prob > bestprob) {
+                        bestcor_sent = cor_text;
+                        bestsent = sent;
+                        bestsent_begin = sent_begin;
+                        bestsent_end = sent_end;
+                        beststart = cor_start + sent_begin; // the global start index
+                        bestlen = cor_len;
+                        bestprob = cor_prob;
+                    }
+                }
+            } catch (Exception e){
+                e.printStackTrace();
+                exception = e;
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            Log.e(TAG, "best sent:"+bestsent +"\ncorr to  :"+bestcor_sent);
+            if (bestprob > 0) {
+                String content = noteContents.getText().toString();
+                int lastidx = content.lastIndexOf(correction);
+                content = content.substring(0, lastidx);
+                replaceWithAnimationInRange(content.substring(0, bestsent_begin)+bestcor_sent+content.substring(bestsent_end), beststart, bestlen);
+                noteContents.setSelection(noteContents.getText().length());
+            } else {
+                noteContents.setText(noteContents.getText().toString());
+                noteContents.setSelection(noteContents.getText().length());
+            }
+        }
     }
 
     /**
@@ -699,11 +838,11 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         return noteContents.getLayout().getHeight()/noteContents.getLineCount();
     }
 
-    private int getTextIndexOfEvent(MotionEvent event) {
+    private int getTextIndexOfEvent(MotionEvent event, int yoffset) {
         Layout layout = noteContents.getLayout();
         float x = event.getX() + noteContents.getScrollX();
         float y = event.getY() + noteContents.getScrollY();
-        y = Math.max(y-50, 0); //offset
+        y = Math.max(y-yoffset, 0); //offset
         int line = layout.getLineForVertical((int) y);
         return layout.getOffsetForHorizontal( line,  x);
     }
@@ -732,6 +871,56 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
         valueAnimator.setDuration(500);
         valueAnimator.start();
+    }
+
+    private void replaceWithAnimationInRange(String text, int start, int len){
+        ValueAnimator valueAnimator = ValueAnimator.ofArgb(0xffff6600,0xff000000);
+        SpannableStringBuilder sban = new SpannableStringBuilder(text);
+        valueAnimator.addUpdateListener((ValueAnimator animation) -> {
+            sban.setSpan(new ForegroundColorSpan((Integer)animation.getAnimatedValue()), start, start+len, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+            noteContents.setText(sban);
+            noteContents.setSelection(noteContents.getText().length());
+        });
+
+        valueAnimator.setDuration(500);
+        valueAnimator.start();
+    }
+
+    private String getSurroudningTextOfIndex(String content, int index) {
+        if (index >= content.length()){
+            return null;
+        }
+        int startidx = Math.max(0, index-25);
+        int endidx = Math.min(content.length()-1, index+25);
+
+        if (startidx > 0) {
+            for (int i = startidx; i < index; i++) {
+                char c = content.charAt(i);
+                if (!Character.isLetter(c) && !Character.isDigit(c)) {
+                    startidx = i;
+                    break;
+                }
+            }
+            startidx += 1;
+        }
+
+        if (endidx < content.length()-1) {
+            for (int i = endidx; i > index; i--) {
+                char c = content.charAt(i);
+                if (!Character.isLetter(c) && !Character.isDigit(c)) {
+                    endidx = i;
+                    break;
+                }
+            }
+        }
+
+        if (endidx <= startidx){
+            return null;
+        }
+
+        sent_begin = startidx;
+        sent_end = endidx;
+        return content.substring(startidx, endidx+1);
     }
 
     //use magnifier if the android version is above P

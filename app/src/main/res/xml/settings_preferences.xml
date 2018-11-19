@@ -41,6 +41,14 @@
         android:negativeButtonText="@null"
         android:positiveButtonText="@null"
         android:title="@string/action_sort_by" />
+    <ListPreference
+        android:defaultValue="1"
+        android:entries="@array/correction_method"
+        android:entryValues="@array/correction_method_values"
+        android:key="correction_method"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="Correction Method" />
 
     <CheckBoxPreference
         android:defaultValue="true"

@@ -37,5 +37,10 @@
         <item>large</item>
         <item>largest</item>
     </string-array>
-
+    <string-array name="correction_method_values">
+        <item>none</item>
+        <item>plain</item>
+        <item>drag</item>
+        <item>smart</item>
+    </string-array>
 </resources>

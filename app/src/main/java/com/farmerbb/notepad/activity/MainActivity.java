@@ -149,6 +149,11 @@ NoteViewFragment.Listener {
                 editor.apply();
             }
 
+            if(pref.getString("correction_method", "null").equals("null")) {
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putString("correction_method", "drag");
+                editor.apply();
+            }
 
             // Rename any saved drafts from 1.3.x
             File oldDraft = new File(getFilesDir() + File.separator + "draft");

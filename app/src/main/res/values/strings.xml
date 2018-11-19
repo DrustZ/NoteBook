@@ -101,5 +101,11 @@
         <item>Large</item>
         <item>Largest</item>
     </string-array>
+    <string-array name="correction_method">
+        <item>No correction</item>
+        <item>Drag and move</item>
+        <item>Throw</item>
+        <item>Button</item>
+    </string-array>
 
 </resources>
