@@ -113,7 +113,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     private int span_end = -1;
     private int sent_begin = -1;
     private int sent_end = -1;
-
+    private int release_x = -1;
 
     private String correction = null;
     private FloatButtonReceiver floatButtonReceiver = null;
@@ -602,44 +602,46 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                 case MotionEvent.ACTION_DOWN:
                     correction = null;
                     if (correct_option.equals("drag") || correct_option.equals("plain")) {
+                        Log.e(TAG, "onTouch: touched down!");
                         if (mVelocityTracker == null) {
                             // Retrieve a new VelocityTracker object to watch the velocity of a motion.
                             mVelocityTracker = VelocityTracker.obtain();
-
-                            float x = event.getX();// + noteContents.getScrollX();
-                            float y = event.getY();// + noteContents.getScrollY();
-                            String content = noteContents.getText().toString();
-                            int spaceidx = content.trim().lastIndexOf(" ");
-                            if (spaceidx > 0) {
-                                correction = content.trim().substring(spaceidx + 1);
-                                indiactorView.setText(correction);
-                                spaceidx = content.lastIndexOf(correction);
-                            }
-
-                            //if there is text
-                            if (spaceidx >= 0) {
-                                float wordlen = getWordWidth(correction);
-                                float wordendX = getLastLineWidth(wordlen);
-                                float wordstartX = wordendX - wordlen;
-                                float wordendY = getContentHeight();
-                                float wordstartY = wordendY - getLineHeight();
-
-                                if (x <= wordendX + 100 && x >= wordstartX - 50
-                                        && y >= wordstartY - 40 && y <= wordendY + 100) {
-                                    correction_begin = true;
-                                    Log.e(TAG, "start correction! on " + correction);
-                                    InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
-                                    imm.hideSoftInputFromWindow(noteContents.getWindowToken(), 0);
-                                    //                            Log.e(TAG, "scroll Y "+scrollview.getScrollY());
-                                    //                            Log.e(TAG, "last line width: "+ getLastLineWidth(getWordWidth(correction)) + " overall height "+getContentHeight());
-                                    //                            Log.e(TAG, "last line top: "+ (getContentHeight()-getLineHeight()) + " last word start "+(getLastLineWidth(getWordWidth(correction))-getWordWidth(correction)));
-                                    //                            Log.e(TAG, "touch x "+x + " y "+y);
-                                }
-                            }
                             mVelocityTracker.addMovement(event);
                         } else {
                             // Reset the velocity tracker back to its initial state.
                             mVelocityTracker.clear();
+                        }
+                        float x = event.getX();// + noteContents.getScrollX();
+                        float y = event.getY();// + noteContents.getScrollY();
+                        String content = noteContents.getText().toString();
+                        int spaceidx = content.trim().lastIndexOf(" ");
+                        if (spaceidx > 0) {
+                            correction = content.trim().substring(spaceidx + 1);
+                            indiactorView.setText(correction);
+                            spaceidx = content.lastIndexOf(correction);
+                            Log.e(TAG, "onTouch: correction!");
+                        }
+                        Log.e(TAG, "onTouch: here!");
+                        //if there is text
+                        if (spaceidx >= 0) {
+                            float wordlen = getWordWidth(correction);
+                            float wordendX = getLastLineWidth(wordlen);
+                            float wordstartX = wordendX - wordlen;
+                            float wordendY = getContentHeight();
+                            float wordstartY = wordendY - getLineHeight();
+
+                            if (x <= wordendX + 100 && x >= wordstartX - 50
+                                    && y >= wordstartY - 40 && y <= wordendY + 100) {
+                                correction_begin = true;
+                                Log.e(TAG, "onTouch: begin!");
+//                                    Log.e(TAG, "start correction! on " + correction);
+                                InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+                                imm.hideSoftInputFromWindow(noteContents.getWindowToken(), 0);
+                                //                            Log.e(TAG, "scroll Y "+scrollview.getScrollY());
+                                //                            Log.e(TAG, "last line width: "+ getLastLineWidth(getWordWidth(correction)) + " overall height "+getContentHeight());
+                                //                            Log.e(TAG, "last line top: "+ (getContentHeight()-getLineHeight()) + " last word start "+(getLastLineWidth(getWordWidth(correction))-getWordWidth(correction)));
+                                //                            Log.e(TAG, "touch x "+x + " y "+y);
+                            }
                         }
                     }
                     break;
@@ -653,6 +655,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                         float vy = mVelocityTracker.getYVelocity();
                         if (Math.sqrt(vx * vx + vy * vy) < 1000) {
                             int offset = getTextIndexOfEvent(event, 50);
+
                             String content = noteContents.getText().toString();
                             int cursor_pos = noteContents.getSelectionStart();
                             if (getHighlightStringOnIndex(content, offset)) {
@@ -689,6 +692,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                     } else if (correct_option.equals("drag")) {
                         // get up position x y
                         if (!correction_begin) break;
+                        release_x = (int)(event.getX()+noteContents.getScrollX());
                         int offset1 = getTextIndexOfEvent(event, 60); //line 0
                         int offset2 = getTextIndexOfEvent(event, 0); //line 1
                         int offset3 = getTextIndexOfEvent(event, -60); //line 2
@@ -713,10 +717,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                     endCorrection();
                     break;
                 case MotionEvent.ACTION_CANCEL:
-                    if (correct_option.equals("drag") || correct_option.equals("plain")) {
-                        // Return a VelocityTracker object back to be re-used by others.
-                        endCorrection();
-                    }
+                    endCorrection();
                     break;
             }
         }
@@ -781,13 +782,16 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                     }
 
                     if (cor_prob > bestprob) {
-                        bestcor_sent = cor_text;
-                        bestsent = sent;
-                        bestsent_begin = sent_begin;
-                        bestsent_end = sent_end;
-                        beststart = cor_start + sent_begin; // the global start index
-                        bestlen = cor_len;
-                        bestprob = cor_prob;
+                        // has to be within the rect of release point
+                        if (offsetWithinRange(cor_start + sent_begin, release_x)) {
+                            bestcor_sent = cor_text;
+                            bestsent = sent;
+                            bestsent_begin = sent_begin;
+                            bestsent_end = sent_end;
+                            beststart = cor_start + sent_begin; // the global start index
+                            bestlen = cor_len;
+                            bestprob = cor_prob;
+                        }
                     }
                 }
             } catch (Exception e){
@@ -801,17 +805,31 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
             Log.e(TAG, "best sent:"+bestsent +"\ncorr to  :"+bestcor_sent);
+
             if (bestprob > 0) {
                 String content = noteContents.getText().toString();
                 int lastidx = content.lastIndexOf(correction);
                 content = content.substring(0, lastidx);
-                replaceWithAnimationInRange(content.substring(0, bestsent_begin)+bestcor_sent+content.substring(bestsent_end), beststart, bestlen);
+                if (bestsent_end >= content.length()){
+                    replaceWithAnimationInRange(content.substring(0, bestsent_begin) + bestcor_sent, beststart, bestlen);
+                } else {
+                    replaceWithAnimationInRange(content.substring(0, bestsent_begin) + bestcor_sent + content.substring(bestsent_end), beststart, bestlen);
+                }
                 noteContents.setSelection(noteContents.getText().length());
             } else {
                 noteContents.setText(noteContents.getText().toString());
                 noteContents.setSelection(noteContents.getText().length());
             }
         }
+    }
+
+    private boolean offsetWithinRange(int offset, int x){
+        Layout layout = noteContents.getLayout();
+        float offsetx = layout.getPrimaryHorizontal(offset);
+        if (offsetx < x-250 || offset > x+200){
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -844,7 +862,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         float y = event.getY() + noteContents.getScrollY();
         y = Math.max(y-yoffset, 0); //offset
         int line = layout.getLineForVertical((int) y);
-        return layout.getOffsetForHorizontal( line,  x);
+        int offset = layout.getOffsetForHorizontal( line,  x);
+        return offset;
     }
 
     /** animation and string effects
@@ -890,8 +909,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         if (index >= content.length()){
             return null;
         }
-        int startidx = Math.max(0, index-25);
-        int endidx = Math.min(content.length()-1, index+25);
+        int startidx = Math.max(0, index-30);
+        int endidx = Math.min(content.length()-1, index+30);
 
         if (startidx > 0) {
             for (int i = startidx; i < index; i++) {
@@ -919,7 +938,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         }
 
         sent_begin = startidx;
-        sent_end = endidx;
+        sent_end = endidx+1;
         return content.substring(startidx, endidx+1);
     }
 
