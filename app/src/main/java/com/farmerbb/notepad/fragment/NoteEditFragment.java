@@ -602,7 +602,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                 case MotionEvent.ACTION_DOWN:
                     correction = null;
                     if (correct_option.equals("drag") || correct_option.equals("plain")) {
-                        Log.e(TAG, "onTouch: touched down!");
                         if (mVelocityTracker == null) {
                             // Retrieve a new VelocityTracker object to watch the velocity of a motion.
                             mVelocityTracker = VelocityTracker.obtain();
@@ -619,9 +618,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                             correction = content.trim().substring(spaceidx + 1);
                             indiactorView.setText(correction);
                             spaceidx = content.lastIndexOf(correction);
-                            Log.e(TAG, "onTouch: correction!");
+//                            Log.e(TAG, "onTouch: correction!");
                         }
-                        Log.e(TAG, "onTouch: here!");
                         //if there is text
                         if (spaceidx >= 0) {
                             float wordlen = getWordWidth(correction);
@@ -633,7 +631,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                             if (x <= wordendX + 100 && x >= wordstartX - 50
                                     && y >= wordstartY - 40 && y <= wordendY + 100) {
                                 correction_begin = true;
-                                Log.e(TAG, "onTouch: begin!");
 //                                    Log.e(TAG, "start correction! on " + correction);
                                 InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
                                 imm.hideSoftInputFromWindow(noteContents.getWindowToken(), 0);
@@ -876,6 +873,12 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
             return;
         }
         String newcontent = content.substring(0, span_begin)+correction+content.substring(span_end);
+        //for insertion
+        if (span_begin == span_end){
+            newcontent = content.substring(0, span_begin)+" "+correction+content.substring(span_end);
+            span_begin += 1;
+        }
+
         span_end = span_begin+correction.length();
         //create a tmp value incase the internal attributes get changed during animation
         int sbegin = span_begin;
@@ -955,6 +958,17 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         }
 
         char c = content.charAt(index);
+        //for insert
+        if (c == ' '){
+            span_begin = index;
+            span_end = index;
+            sb.clear();
+            sb.append(content);
+            // Set the text color for first 4 characters
+            sb.setSpan(bcs, span_begin, span_end+1, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+            return true;
+        }
+
         if (!Character.isLetter(c) && !Character.isDigit(c)) {
             //if it's space but there's character before , then maybe the user wants to replace , but the word is too short to select
             if (c > 0 && Character.isLetter(c-1)){
