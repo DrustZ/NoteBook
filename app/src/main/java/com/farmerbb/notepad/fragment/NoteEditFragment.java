@@ -109,11 +109,19 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     private Magnifier magnifier = null;
     private VelocityTracker mVelocityTracker = null;
     private boolean correction_begin = false; // if entered the correction mode
+    private boolean undo_begin = false; // if undo gesture performed
     private int span_begin = -1;
     private int span_end = -1;
     private int sent_begin = -1;
     private int sent_end = -1;
-    private int release_x = -1;
+    private float release_x = -1;
+    private float release_y = -1;
+    private float touch_down_x = -1;
+    private float touch_down_y = -1;
+    private long touch_down_time = 0;
+    private String last_content = null;
+    private int last_span_begin = -1;
+    private int last_span_end = -1;
 
     private String correction = null;
     private FloatButtonReceiver floatButtonReceiver = null;
@@ -612,6 +620,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                         }
                         float x = event.getX();// + noteContents.getScrollX();
                         float y = event.getY();// + noteContents.getScrollY();
+                        touch_down_x = x;
+                        touch_down_y = y;
                         String content = noteContents.getText().toString();
                         int spaceidx = content.trim().lastIndexOf(" ");
                         if (spaceidx > 0) {
@@ -631,6 +641,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                             if (x <= wordendX + 100 && x >= wordstartX - 50
                                     && y >= wordstartY - 40 && y <= wordendY + 100) {
                                 correction_begin = true;
+                                undo_begin = false;
+                                last_content = null;
 //                                    Log.e(TAG, "start correction! on " + correction);
                                 InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
                                 imm.hideSoftInputFromWindow(noteContents.getWindowToken(), 0);
@@ -638,6 +650,15 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                                 //                            Log.e(TAG, "last line width: "+ getLastLineWidth(getWordWidth(correction)) + " overall height "+getContentHeight());
                                 //                            Log.e(TAG, "last line top: "+ (getContentHeight()-getLineHeight()) + " last word start "+(getLastLineWidth(getWordWidth(correction))-getWordWidth(correction)));
                                 //                            Log.e(TAG, "touch x "+x + " y "+y);
+                            }
+                            else if (x <= release_x + 100 && x >= release_x - 100
+                                    && y >= release_y - 100 && y <= release_y + 100 && last_content != null) // undo criterion
+                            {
+                                touch_down_time = System.currentTimeMillis();
+                                undo_begin = true;
+                            } else {
+                                last_content = null;
+                                undo_begin = false;
                             }
                         }
                     }
@@ -678,18 +699,26 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                     break;
 
                 case MotionEvent.ACTION_UP:
+                    release_x = event.getX();
+                    release_y = event.getY();
                     if (correct_option.equals("plain")) {
-                        if (!correction_begin) break;
-                        if (correction_begin && correction != null && span_begin >= 0) {
-                            replaceWithAnimation();
-                        } else {
-                            noteContents.setText(noteContents.getText().toString());
-                            noteContents.setSelection(noteContents.getText().length());
+                        if (!correction_begin && !undo_begin) break;
+                        if (correction_begin ) {
+                            if (correction != null && span_begin >= 0) {
+                                replaceWithAnimation();
+                            } else {
+                                noteContents.setText(noteContents.getText().toString());
+                                noteContents.setSelection(noteContents.getText().length());
+                            }
+                        } else if (undo_begin){
+                            if (release_y > touch_down_y+50 && System.currentTimeMillis() - touch_down_time < 1000) {
+                                    undoWithAnimation();
+                            }
+                            undo_begin = false;
                         }
                     } else if (correct_option.equals("drag")) {
                         // get up position x y
                         if (!correction_begin) break;
-                        release_x = (int)(event.getX()+noteContents.getScrollX());
                         int offset1 = getTextIndexOfEvent(event, 60); //line 0
                         int offset2 = getTextIndexOfEvent(event, 0); //line 1
                         int offset3 = getTextIndexOfEvent(event, -60); //line 2
@@ -727,8 +756,12 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
             popupWindow.dismiss();
         if (magnifier != null)
             magnifier.dismiss();
+        undo_begin = false;
         correction_begin = false;
     }
+
+    // undo correction
+
 
     /**
      * Http call
@@ -805,8 +838,15 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
             if (bestprob > 0) {
                 String content = noteContents.getText().toString();
+                last_content = content;
+                last_span_begin = beststart;
+                last_span_end = content.substring(beststart+1).indexOf(' ');
+
                 int lastidx = content.lastIndexOf(correction);
                 content = content.substring(0, lastidx);
+
+                if (last_span_end == -1) { last_span_end = last_span_begin+1; }
+
                 if (bestsent_end >= content.length()){
                     replaceWithAnimationInRange(content.substring(0, bestsent_begin) + bestcor_sent, beststart, bestlen);
                 } else {
@@ -820,7 +860,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         }
     }
 
-    private boolean offsetWithinRange(int offset, int x){
+    private boolean offsetWithinRange(int offset, float x){
         Layout layout = noteContents.getLayout();
         float offsetx = layout.getPrimaryHorizontal(offset);
         if (offsetx < x-250 || offset > x+200){
@@ -867,11 +907,21 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
       */
     private void replaceWithAnimation() {
         String content = noteContents.getText().toString();
+
+        last_content = content;
+        last_span_begin = span_begin;
+        last_span_end = span_end;
+        if (span_end == span_begin){
+            last_span_end += 1;
+        }
+
         int lastidx = content.lastIndexOf(correction);
         content = content.substring(0, lastidx);
         if (span_end >= content.length()){
+            last_content = null;
             return;
         }
+
         String newcontent = content.substring(0, span_begin)+correction+content.substring(span_end);
         //for insertion
         if (span_begin == span_end){
@@ -891,7 +941,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                 noteContents.setSelection(noteContents.getText().length());
         });
 
-        valueAnimator.setDuration(500);
+        valueAnimator.setDuration(400);
         valueAnimator.start();
     }
 
@@ -905,6 +955,20 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         });
 
         valueAnimator.setDuration(500);
+        valueAnimator.start();
+    }
+
+    private void undoWithAnimation(){
+        ValueAnimator valueAnimator = ValueAnimator.ofArgb(0xff00ff00,0xff000000);
+        SpannableStringBuilder sban = new SpannableStringBuilder(last_content);
+        last_content = null;
+        valueAnimator.addUpdateListener((ValueAnimator animation) -> {
+            sban.setSpan(new ForegroundColorSpan((Integer)animation.getAnimatedValue()), last_span_begin, last_span_end, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+            noteContents.setText(sban);
+            noteContents.setSelection(noteContents.getText().length());
+        });
+
+        valueAnimator.setDuration(400);
         valueAnimator.start();
     }
 
@@ -1032,6 +1096,9 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
     private void releaseVelocityTracker() { if (null != mVelocityTracker) { mVelocityTracker.clear(); mVelocityTracker.recycle(); mVelocityTracker = null; } }
 
+    /**
+     * Note related Functions
+     */
     private void deleteNote(String filename) {
         // Build the pathname to delete file, then perform delete operation
         File fileToDelete = new File(getActivity().getFilesDir() + File.separator + filename);
