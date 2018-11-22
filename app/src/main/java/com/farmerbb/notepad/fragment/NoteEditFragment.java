@@ -651,8 +651,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                                 //                            Log.e(TAG, "last line top: "+ (getContentHeight()-getLineHeight()) + " last word start "+(getLastLineWidth(getWordWidth(correction))-getWordWidth(correction)));
                                 //                            Log.e(TAG, "touch x "+x + " y "+y);
                             }
-                            else if (x <= release_x + 100 && x >= release_x - 100
-                                    && y >= release_y - 100 && y <= release_y + 100 && last_content != null) // undo criterion
+                            else if (x <= release_x + 150 && x >= release_x - 150
+                                    && y >= release_y - 150 && y <= release_y + 150 && last_content != null) // undo criterion
                             {
                                 touch_down_time = System.currentTimeMillis();
                                 undo_begin = true;
@@ -718,27 +718,39 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                         }
                     } else if (correct_option.equals("drag")) {
                         // get up position x y
-                        if (!correction_begin) break;
-                        int offset1 = getTextIndexOfEvent(event, 60); //line 0
-                        int offset2 = getTextIndexOfEvent(event, 0); //line 1
-                        int offset3 = getTextIndexOfEvent(event, -60); //line 2
-                        String content = noteContents.getText().toString();
-                        List<Integer> offsets = new ArrayList<Integer>();
-                        offsets.add(offset1);
-                        if (offset1 != offset2) { offsets.add(offset2); }
-                        if (offset2 != offset3) { offsets.add(offset3); }
-                        ArrayList<String> arr = new ArrayList<String>();
+                        if (!correction_begin && !undo_begin) break;
 
-                        for (int i = 0; i < offsets.size(); ++i) {
-                            String s = getSurroudningTextOfIndex(content, offsets.get(i));
-                            if (s != null) {
-                                arr.add(s);
-                                arr.add(correction);
-                                arr.add(String.valueOf(sent_begin));
-                                arr.add(String.valueOf(sent_end));
+                        if (correction_begin) {
+                            int offset1 = getTextIndexOfEvent(event, 0); //line 0
+                            int offset2 = getTextIndexOfEvent(event, 50); //line 1
+                            int offset3 = getTextIndexOfEvent(event, 100); //line 2
+                            String content = noteContents.getText().toString();
+                            List<Integer> offsets = new ArrayList<Integer>();
+                            offsets.add(offset1);
+                            if (offset1 != offset2) {
+                                offsets.add(offset2);
+                            }
+                            if (offset2 != offset3) {
+                                offsets.add(offset3);
+                            }
+                            ArrayList<String> arr = new ArrayList<String>();
+
+                            for (int i = 0; i < offsets.size(); ++i) {
+                                String s = getSurroudningTextOfIndex(content, offsets.get(i));
+                                if (s != null) {
+                                    arr.add(s);
+                                    arr.add(correction);
+                                    arr.add(String.valueOf(sent_begin));
+                                    arr.add(String.valueOf(sent_end));
+                                }
+                            }
+                            new PostCorrectionTask().execute(arr);
+                        } else if (undo_begin) {
+                            if (release_y > touch_down_y + 50 && System.currentTimeMillis() - touch_down_time < 1000) {
+                                undoWithAnimation();
                             }
                         }
-                        new PostCorrectionTask().execute(arr);
+                            undo_begin = false;
                     }
                     endCorrection();
                     break;
@@ -862,11 +874,17 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
     private boolean offsetWithinRange(int offset, float x){
         Layout layout = noteContents.getLayout();
-        float offsetx = layout.getPrimaryHorizontal(offset);
-        if (offsetx < x-250 || offset > x+200){
+        try {
+            float offsetx = layout.getPrimaryHorizontal(offset);
+            if (offsetx < x - 100 || offset > x + 100) {
+                return false;
+            }
+            return true;
+        }
+        catch (Exception e){
+            e.printStackTrace();
             return false;
         }
-        return true;
     }
 
     /**
@@ -961,9 +979,23 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     private void undoWithAnimation(){
         ValueAnimator valueAnimator = ValueAnimator.ofArgb(0xff00ff00,0xff000000);
         SpannableStringBuilder sban = new SpannableStringBuilder(last_content);
+
+        if (last_span_end < last_span_begin) {
+            last_span_end = last_span_begin+1;
+            for (int i = last_span_begin; i < last_content.length(); ++i) {
+                char c = last_content.charAt(i);
+                if (!Character.isLetterOrDigit(c)) {
+                    last_span_end = i;
+                    break;
+                }
+            }
+        }
         last_content = null;
+
+        int tmpbegin = last_span_begin;
+        int tmpend = last_span_end;
         valueAnimator.addUpdateListener((ValueAnimator animation) -> {
-            sban.setSpan(new ForegroundColorSpan((Integer)animation.getAnimatedValue()), last_span_begin, last_span_end, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+            sban.setSpan(new ForegroundColorSpan((Integer)animation.getAnimatedValue()), tmpbegin, tmpend, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
             noteContents.setText(sban);
             noteContents.setSelection(noteContents.getText().length());
         });
@@ -976,8 +1008,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         if (index >= content.length()){
             return null;
         }
-        int startidx = Math.max(0, index-30);
-        int endidx = Math.min(content.length()-1, index+30);
+        int startidx = Math.max(0, index-25);
+        int endidx = Math.min(content.length()-1, index+25);
 
         if (startidx > 0) {
             for (int i = startidx; i < index; i++) {
