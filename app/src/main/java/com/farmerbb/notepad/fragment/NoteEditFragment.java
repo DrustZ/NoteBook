@@ -1008,10 +1008,15 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         if (index >= content.length()){
             return null;
         }
-        int startidx = Math.max(0, index-25);
-        int endidx = Math.min(content.length()-1, index+25);
 
-        if (startidx > 0) {
+        int startidx = Math.max(0, index-25);
+        int endidx = Math.min(content.lastIndexOf(correction), index+25);
+
+        int newline = content.substring(0, startidx+1).lastIndexOf('\n');
+        if (newline > -1){
+            startidx = newline+1;
+        }
+        else if (startidx > 0) {
             for (int i = startidx; i < index; i++) {
                 char c = content.charAt(i);
                 if (!Character.isLetter(c) && !Character.isDigit(c)) {
@@ -1022,7 +1027,13 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
             startidx += 1;
         }
 
-        if (endidx < content.length()-1) {
+        newline = content.substring(endidx).indexOf('\n');
+        if (newline > -1){
+            endidx = newline;
+        }
+        //even it equals the end of content length, we need to go back
+        //because content length is the last correction
+        else {
             for (int i = endidx; i > index; i--) {
                 char c = content.charAt(i);
                 if (!Character.isLetter(c) && !Character.isDigit(c)) {
