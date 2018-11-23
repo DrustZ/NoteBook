@@ -1012,7 +1012,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         int startidx = Math.max(0, index-25);
         int endidx = Math.min(content.lastIndexOf(correction), index+25);
 
-        int newline = content.substring(0, startidx+1).lastIndexOf('\n');
+        int newline = content.substring(0, index).lastIndexOf('\n');
+        Log.e(TAG, "last newline"+newline);
         if (newline > -1){
             startidx = newline+1;
         }
