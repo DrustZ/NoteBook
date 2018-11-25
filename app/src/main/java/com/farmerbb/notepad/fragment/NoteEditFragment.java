@@ -650,12 +650,14 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                                 //                            Log.e(TAG, "last line width: "+ getLastLineWidth(getWordWidth(correction)) + " overall height "+getContentHeight());
                                 //                            Log.e(TAG, "last line top: "+ (getContentHeight()-getLineHeight()) + " last word start "+(getLastLineWidth(getWordWidth(correction))-getWordWidth(correction)));
                                 //                            Log.e(TAG, "touch x "+x + " y "+y);
+                                return true;
                             }
                             else if (x <= release_x + 150 && x >= release_x - 150
                                     && y >= release_y - 150 && y <= release_y + 150 && last_content != null) // undo criterion
                             {
                                 touch_down_time = System.currentTimeMillis();
                                 undo_begin = true;
+                                return true;
                             } else {
                                 last_content = null;
                                 undo_begin = false;
@@ -695,6 +697,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                             magnifier.dismiss();
                             noteContents.setSelection(cursor_pos);
                         }
+                        return true;
                     }
                     break;
 
