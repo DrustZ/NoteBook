@@ -325,6 +325,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         indiactorView.setTypeface(Typeface.SERIF, Typeface.BOLD);
         indiactorView.setTextSize(18);
         indiactorView.setTextColor(0xbf339966);
+        indiactorView.setBackgroundColor(Color.argb(100, 200, 200, 200));
         popupWindow = new PopupWindow(indiactorView);
         popupWindow.setFocusable(false);
 
@@ -685,7 +686,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                             magnifier.show(event.getX(), event.getY() - 30);
                             if (popupWindow.isShowing()) {
                                 popupWindow.update((int) event.getRawX() - (magnifier.getWidth() - 20) / 2, (int) (event.getRawY() - 150 - magnifier.getHeight()),
-                                        magnifier.getWidth() - 20, magnifier.getHeight() - 10);
+                                        magnifier.getWidth() - 20, magnifier.getHeight() - 55);
                             } else {
                                 popupWindow.showAtLocation(noteContents, NO_GRAVITY, (int) event.getRawX() - (magnifier.getWidth() - 20) / 2, (int) (event.getRawY() - 150 - magnifier.getHeight()));
                             }
