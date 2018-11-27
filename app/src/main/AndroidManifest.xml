@@ -49,6 +49,7 @@
         android:theme="@style/Theme.Notepad"
         android:usesCleartextTraffic="true"
         tools:replace="android:label" >
+
         <activity-alias
             android:name="com.farmerbb.notepad.MainActivity"
             android:targetActivity="com.farmerbb.notepad.activity.MainActivity"

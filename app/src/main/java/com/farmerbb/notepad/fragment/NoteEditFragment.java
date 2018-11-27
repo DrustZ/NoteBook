@@ -95,6 +95,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
     final String TAG = "[Log]";
     private EditText noteContents;
+    private ScrollView mscrollView;
 
     //post
     public static final MediaType JSON
@@ -241,6 +242,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         // Apply theme
         SharedPreferences pref = getActivity().getSharedPreferences(getActivity().getPackageName() + "_preferences", Context.MODE_PRIVATE);
         ScrollView scrollView = getActivity().findViewById(R.id.scrollView1);
+        mscrollView = scrollView;
         String theme = pref.getString("theme", "light-sans");
 
         if(theme.contains("light")) {
@@ -427,7 +429,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         SharedPreferences pref = getActivity().getSharedPreferences(getActivity().getPackageName() + "_preferences", Context.MODE_PRIVATE);
         directEdit = pref.getBoolean("direct_edit", false);
         correct_option = pref.getString("correction_method", "drag");
-        Log.e(TAG, "Correction method " +correct_option );
+
         if (correct_option.equals("smart")) {
             if (floatButtonReceiver == null) floatButtonReceiver = new FloatButtonReceiver();
             getActivity().registerReceiver(floatButtonReceiver, new IntentFilter(FloatingButtonService.FLOAT_BUTTON_INTENT));
@@ -600,6 +602,18 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         }
     }
 
+    public void onReceivedCorrection(int x, int y, String correction){
+        Layout layout = noteContents.getLayout();
+        int [] location = new int[2];
+        noteContents.getLocationInWindow(location);
+        //rawXY to relative XY
+        x = x - location[0];
+        y = y - location[1];
+        release_x = x;
+        release_y = y;
+        executeAutoCorrection(x, y, correction);
+    }
+
     /***
      * Touch processing functions
      * @param
@@ -619,8 +633,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                             // Reset the velocity tracker back to its initial state.
                             mVelocityTracker.clear();
                         }
-                        float x = event.getX();// + noteContents.getScrollX();
-                        float y = event.getY();// + noteContents.getScrollY();
+                        float x = event.getX();
+                        float y = event.getY();
                         touch_down_x = x;
                         touch_down_y = y;
                         String content = noteContents.getText().toString();
@@ -675,7 +689,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                         float vx = mVelocityTracker.getXVelocity();
                         float vy = mVelocityTracker.getYVelocity();
                         if (Math.sqrt(vx * vx + vy * vy) < 1000) {
-                            int offset = getTextIndexOfEvent(event, 50);
+                            int offset = getTextIndexOfXY(event.getX(), event.getY(), 50);
 
                             String content = noteContents.getText().toString();
                             int cursor_pos = noteContents.getSelectionStart();
@@ -725,30 +739,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                         if (!correction_begin && !undo_begin) break;
 
                         if (correction_begin) {
-                            int offset1 = getTextIndexOfEvent(event, 0); //line 0
-                            int offset2 = getTextIndexOfEvent(event, 50); //line 1
-                            int offset3 = getTextIndexOfEvent(event, 100); //line 2
-                            String content = noteContents.getText().toString();
-                            List<Integer> offsets = new ArrayList<Integer>();
-                            offsets.add(offset1);
-                            if (offset1 != offset2) {
-                                offsets.add(offset2);
-                            }
-                            if (offset2 != offset3) {
-                                offsets.add(offset3);
-                            }
-                            ArrayList<String> arr = new ArrayList<String>();
-
-                            for (int i = 0; i < offsets.size(); ++i) {
-                                String s = getSurroudningTextOfIndex(content, offsets.get(i));
-                                if (s != null) {
-                                    arr.add(s);
-                                    arr.add(correction);
-                                    arr.add(String.valueOf(sent_begin));
-                                    arr.add(String.valueOf(sent_end));
-                                }
-                            }
-                            new PostCorrectionTask().execute(arr);
+                            executeAutoCorrection(release_x, release_y, correction);
                         } else if (undo_begin) {
                             if (release_y > touch_down_y + 50 && System.currentTimeMillis() - touch_down_time < 1000) {
                                 undoWithAnimation();
@@ -766,6 +757,33 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         return false;
     }
 
+    private void executeAutoCorrection(float x, float y, String correction) {
+        int offset1 = getTextIndexOfXY(x, y, 0); //line 0
+        int offset2 = getTextIndexOfXY(x, y, 50); //line 1
+        int offset3 = getTextIndexOfXY(x, y, 100); //line 2
+        String content = noteContents.getText().toString();
+        List<Integer> offsets = new ArrayList<Integer>();
+        offsets.add(offset1);
+        if (offset1 != offset2) {
+            offsets.add(offset2);
+        }
+        if (offset2 != offset3) {
+            offsets.add(offset3);
+        }
+        ArrayList<String> arr = new ArrayList<String>();
+
+        for (int i = 0; i < offsets.size(); ++i) {
+            String s = getSurroudningTextOfIndex(content, offsets.get(i));
+            if (s != null) {
+                arr.add(s);
+                arr.add(correction);
+                arr.add(String.valueOf(sent_begin));
+                arr.add(String.valueOf(sent_end));
+            }
+        }
+        new PostCorrectionTask().execute(arr);
+    }
+
     private void endCorrection() {
         releaseVelocityTracker();
         if (popupWindow != null)
@@ -775,9 +793,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         undo_begin = false;
         correction_begin = false;
     }
-
-    // undo correction
-
 
     /**
      * Http call
@@ -915,14 +930,60 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         return noteContents.getLayout().getHeight()/noteContents.getLineCount();
     }
 
-    private int getTextIndexOfEvent(MotionEvent event, int yoffset) {
+    private int getTextIndexOfXY(float x, float y, int yoffset) {
         Layout layout = noteContents.getLayout();
-        float x = event.getX() + noteContents.getScrollX();
-        float y = event.getY() + noteContents.getScrollY();
         y = Math.max(y-yoffset, 0); //offset
-        int line = layout.getLineForVertical((int) y);
+        int line = layout.getLineForVertical((int)y);
         int offset = layout.getOffsetForHorizontal( line,  x);
         return offset;
+    }
+
+    private String getSurroudningTextOfIndex(String content, int index) {
+        if (index >= content.length()){
+            return null;
+        }
+
+        int startidx = Math.max(0, index-25);
+        int endidx = Math.min(content.lastIndexOf(correction), index+25);
+
+        int newline = content.substring(0, index).lastIndexOf('\n');
+        if (newline > -1){
+            startidx = newline+1;
+        }
+        else if (startidx > 0) {
+            for (int i = startidx; i < index; i++) {
+                char c = content.charAt(i);
+                if (!Character.isLetter(c) && !Character.isDigit(c)) {
+                    startidx = i;
+                    break;
+                }
+            }
+            startidx += 1;
+        }
+
+        newline = content.substring(endidx).indexOf('\n');
+        if (newline > -1){
+            endidx = newline;
+        }
+        //even it equals the end of content length, we need to go back
+        //because content length is the last correction
+        else {
+            for (int i = endidx; i > index; i--) {
+                char c = content.charAt(i);
+                if (!Character.isLetter(c) && !Character.isDigit(c)) {
+                    endidx = i;
+                    break;
+                }
+            }
+        }
+
+        if (endidx <= startidx){
+            return null;
+        }
+
+        sent_begin = startidx;
+        sent_end = endidx+1;
+        return content.substring(startidx, endidx+1);
     }
 
     /** animation and string effects
@@ -1008,54 +1069,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         valueAnimator.start();
     }
 
-    private String getSurroudningTextOfIndex(String content, int index) {
-        if (index >= content.length()){
-            return null;
-        }
-
-        int startidx = Math.max(0, index-25);
-        int endidx = Math.min(content.lastIndexOf(correction), index+25);
-
-        int newline = content.substring(0, index).lastIndexOf('\n');
-        Log.e(TAG, "last newline"+newline);
-        if (newline > -1){
-            startidx = newline+1;
-        }
-        else if (startidx > 0) {
-            for (int i = startidx; i < index; i++) {
-                char c = content.charAt(i);
-                if (!Character.isLetter(c) && !Character.isDigit(c)) {
-                    startidx = i;
-                    break;
-                }
-            }
-            startidx += 1;
-        }
-
-        newline = content.substring(endidx).indexOf('\n');
-        if (newline > -1){
-            endidx = newline;
-        }
-        //even it equals the end of content length, we need to go back
-        //because content length is the last correction
-        else {
-            for (int i = endidx; i > index; i--) {
-                char c = content.charAt(i);
-                if (!Character.isLetter(c) && !Character.isDigit(c)) {
-                    endidx = i;
-                    break;
-                }
-            }
-        }
-
-        if (endidx <= startidx){
-            return null;
-        }
-
-        sent_begin = startidx;
-        sent_end = endidx+1;
-        return content.substring(startidx, endidx+1);
-    }
 
     //use magnifier if the android version is above P
     // background works horrible...

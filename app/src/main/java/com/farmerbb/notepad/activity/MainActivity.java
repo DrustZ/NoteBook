@@ -18,7 +18,9 @@ package com.farmerbb.notepad.activity;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
+import android.content.IntentFilter;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
@@ -52,6 +54,7 @@ import com.farmerbb.notepad.fragment.dialog.DeleteDialogFragment;
 import com.farmerbb.notepad.fragment.dialog.FirstRunDialogFragment;
 import com.farmerbb.notepad.fragment.dialog.SaveButtonDialogFragment;
 import com.farmerbb.notepad.service.FloatingButtonService;
+import com.farmerbb.notepad.service.MyBroadCastReceiver;
 import com.farmerbb.notepad.util.WebViewInitState;
 
 import org.apache.commons.lang3.StringUtils;
@@ -78,7 +81,8 @@ SaveButtonDialogFragment.Listener,
 FirstRunDialogFragment.Listener,
 NoteListFragment.Listener,
 NoteEditFragment.Listener, 
-NoteViewFragment.Listener {
+NoteViewFragment.Listener,
+MyBroadCastReceiver.ReceiverListener {
 
     Object[] filesToExport;
     Object[] filesToDelete;
@@ -92,6 +96,8 @@ NoteViewFragment.Listener {
     public static final int EXPORT = 43;
     public static final int EXPORT_TREE = 44;
     public static final int FLOAT_REQUEST = 45;
+
+    private MyBroadCastReceiver mReceiver = null;
 
     @Override
     protected void onStop() {
@@ -202,6 +208,18 @@ NoteViewFragment.Listener {
                 cab = savedCab;
             }
         }
+
+        mReceiver = new MyBroadCastReceiver();
+        mReceiver.setmListener(this);
+        IntentFilter filter = new IntentFilter("com.android.inputmethod.Correction");
+        registerReceiver(mReceiver, filter);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mReceiver != null)
+            unregisterReceiver(mReceiver);
     }
 
     @Override
@@ -248,6 +266,17 @@ NoteViewFragment.Listener {
             return true;
         }
         return super.dispatchKeyShortcutEvent(event);
+    }
+
+    @Override
+    public void receivedIntent(Intent intent) {
+        if(getSupportFragmentManager().findFragmentById(R.id.noteViewEdit) instanceof NoteEditFragment) {
+            NoteEditFragment fragment = (NoteEditFragment) getSupportFragmentManager().findFragmentByTag("NoteEditFragment");
+            int x = intent.getIntExtra("x", 0);
+            int y = intent.getIntExtra("y", 0);
+            String correction = intent.getStringExtra("text");
+            fragment.onReceivedCorrection(x, y, correction);
+        }
     }
 
     @Override
