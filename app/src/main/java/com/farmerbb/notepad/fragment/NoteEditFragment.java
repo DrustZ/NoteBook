@@ -121,6 +121,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     private float touch_down_y = -1;
     private long touch_down_time = 0;
     private String last_content = null;
+    private String correct_content = null;
     private int last_span_begin = -1;
     private int last_span_end = -1;
 
@@ -614,6 +615,17 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         executeAutoCorrection(x, y, correction);
     }
 
+    public void onReceivedUndo(){
+        String content = noteContents.getText().toString();
+        if (last_content != null && correct_content != null
+        && correct_content.equals(content)){
+            undoWithAnimation(); }
+        else {
+            correct_content = null;
+            last_content = null;
+        }
+    }
+
     /***
      * Touch processing functions
      * @param
@@ -657,8 +669,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                                     && y >= wordstartY - 40 && y <= wordendY + 100) {
                                 correction_begin = true;
                                 undo_begin = false;
-                                last_content = null;
-                                Log.e(TAG, "start correction! on " + correction);
+//                                Log.e(TAG, "start correction! on " + correction);
                                 InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
                                 imm.hideSoftInputFromWindow(noteContents.getWindowToken(), 0);
                                 //                            Log.e(TAG, "scroll Y "+scrollview.getScrollY());
@@ -668,13 +679,14 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                                 return true;
                             }
                             else if (x <= release_x + 150 && x >= release_x - 150
-                                    && y >= release_y - 150 && y <= release_y + 150 && last_content != null) // undo criterion
+                                    && y >= release_y - 150 && y <= release_y + 150
+                                    && last_content != null && correct_content != null
+                                    && correct_content.equals(content)) // undo criterion
                             {
                                 touch_down_time = System.currentTimeMillis();
                                 undo_begin = true;
                                 return true;
                             } else {
-                                last_content = null;
                                 undo_begin = false;
                             }
                         }
@@ -764,6 +776,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     }
 
     private void executeAutoCorrection(float x, float y, String correction) {
+        if (!correct_option.equals("drag")) return;
+
         int offset1 = getTextIndexOfXY(x, y, 0); //line 0
         int offset2 = getTextIndexOfXY(x, y, 50); //line 1
         int offset3 = getTextIndexOfXY(x, y, 100); //line 2
@@ -1020,7 +1034,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
             newcontent = content.substring(0, span_begin)+" "+correction+content.substring(span_end);
             span_begin += 1;
         }
-
+        correct_content = newcontent;
         span_end = span_begin+correction.length();
         //create a tmp value incase the internal attributes get changed during animation
         int sbegin = span_begin;
@@ -1038,6 +1052,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     }
 
     private void replaceWithAnimationInRange(String text, int start, int len){
+        correct_content = text;
         ValueAnimator valueAnimator = ValueAnimator.ofArgb(0xffff6600,0xff000000);
         SpannableStringBuilder sban = new SpannableStringBuilder(text);
         valueAnimator.addUpdateListener((ValueAnimator animation) -> {
@@ -1051,6 +1066,8 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     }
 
     private void undoWithAnimation(){
+        if (last_content == null) return;
+
         ValueAnimator valueAnimator = ValueAnimator.ofArgb(0xff00ff00,0xff000000);
         SpannableStringBuilder sban = new SpannableStringBuilder(last_content);
 
@@ -1065,6 +1082,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
             }
         }
         last_content = null;
+        correct_content = null;
 
         int tmpbegin = last_span_begin;
         int tmpend = last_span_end;

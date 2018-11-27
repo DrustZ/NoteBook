@@ -97,7 +97,8 @@ MyBroadCastReceiver.ReceiverListener {
     public static final int EXPORT_TREE = 44;
     public static final int FLOAT_REQUEST = 45;
 
-    private MyBroadCastReceiver mReceiver = null;
+    private MyBroadCastReceiver mCoorectionReceiver = null;
+    private MyBroadCastReceiver mUndoReceiver = null;
 
     @Override
     protected void onStop() {
@@ -209,17 +210,24 @@ MyBroadCastReceiver.ReceiverListener {
             }
         }
 
-        mReceiver = new MyBroadCastReceiver();
-        mReceiver.setmListener(this);
-        IntentFilter filter = new IntentFilter("com.android.inputmethod.Correction");
-        registerReceiver(mReceiver, filter);
+        mCoorectionReceiver = new MyBroadCastReceiver();
+        mCoorectionReceiver.setmListener(this);
+        IntentFilter filter1 = new IntentFilter("com.android.inputmethod.Correction");
+        registerReceiver(mCoorectionReceiver, filter1);
+
+        mUndoReceiver = new MyBroadCastReceiver();
+        mUndoReceiver.setmListener(this);
+        IntentFilter filter2 = new IntentFilter("com.android.inputmethod.Correction_Undo");
+        registerReceiver(mUndoReceiver, filter2);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (mReceiver != null)
-            unregisterReceiver(mReceiver);
+        if (mCoorectionReceiver != null)
+            unregisterReceiver(mCoorectionReceiver);
+        if (mUndoReceiver != null)
+            unregisterReceiver(mUndoReceiver);
     }
 
     @Override
@@ -272,10 +280,14 @@ MyBroadCastReceiver.ReceiverListener {
     public void receivedIntent(Intent intent) {
         if(getSupportFragmentManager().findFragmentById(R.id.noteViewEdit) instanceof NoteEditFragment) {
             NoteEditFragment fragment = (NoteEditFragment) getSupportFragmentManager().findFragmentByTag("NoteEditFragment");
-            int x = intent.getIntExtra("x", 0);
-            int y = intent.getIntExtra("y", 0);
-            String correction = intent.getStringExtra("text");
-            fragment.onReceivedCorrection(x, y, correction);
+            if (intent.hasExtra("text")) {
+                int x = intent.getIntExtra("x", 0);
+                int y = intent.getIntExtra("y", 0);
+                String correction = intent.getStringExtra("text");
+                fragment.onReceivedCorrection(x, y, correction);
+            } else if (intent.hasExtra("undo")){
+                fragment.onReceivedUndo();
+            }
         }
     }
 
