@@ -638,27 +638,27 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                         touch_down_x = x;
                         touch_down_y = y;
                         String content = noteContents.getText().toString();
-                        int spaceidx = content.trim().lastIndexOf(" ");
-                        if (spaceidx > 0) {
-                            correction = content.trim().substring(spaceidx + 1);
+                        String tokens[] = content.split("[(\\r?\\n)\\s]+");
+                        int correctionidx = -1;
+                        if (tokens[tokens.length-1].length() > 0) {
+                            correction = tokens[tokens.length-1];
+                            correctionidx = content.lastIndexOf(correction);
+//                            Log.e(TAG, "correction : "+correction);
                             indiactorView.setText(correction);
-                            spaceidx = content.lastIndexOf(correction);
-//                            Log.e(TAG, "onTouch: correction!");
                         }
                         //if there is text
-                        if (spaceidx >= 0) {
+                        if (correctionidx >= 0) {
                             float wordlen = getWordWidth(correction);
-                            float wordendX = getLastLineWidth(wordlen);
+                            float wordendX = getLastLineWidth(correctionidx, correction.length()+correctionidx-1);
                             float wordstartX = wordendX - wordlen;
                             float wordendY = getContentHeight();
                             float wordstartY = wordendY - getLineHeight();
-
                             if (x <= wordendX + 100 && x >= wordstartX - 50
                                     && y >= wordstartY - 40 && y <= wordendY + 100) {
                                 correction_begin = true;
                                 undo_begin = false;
                                 last_content = null;
-//                                    Log.e(TAG, "start correction! on " + correction);
+                                Log.e(TAG, "start correction! on " + correction);
                                 InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
                                 imm.hideSoftInputFromWindow(noteContents.getWindowToken(), 0);
                                 //                            Log.e(TAG, "scroll Y "+scrollview.getScrollY());
@@ -722,6 +722,12 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                     if (correct_option.equals("plain")) {
                         if (!correction_begin && !undo_begin) break;
                         if (correction_begin ) {
+                            //not correct too fast
+                            if (event.getEventTime()-event.getDownTime() < 300){
+                                noteContents.setText(noteContents.getText().toString());
+                                endCorrection();
+                                break;
+                            }
                             if (correction != null && span_begin >= 0) {
                                 replaceWithAnimation();
                             } else {
@@ -913,11 +919,14 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         return noteContents.getLayout().getHeight();
     }
 
-    private float getLastLineWidth(float wordlen) {
+    private float getLastLineWidth(int startidx, int endidx) {
+
         int lines =  noteContents.getLineCount();
         for (int line = lines-1; line >= 0; line--) {
-            float wid = noteContents.getLayout().getLineWidth(line);
-                if (wid > wordlen) return wid;
+            int end = noteContents.getLayout().getLineEnd(line);
+            int start = noteContents.getLayout().getLineStart(line);
+            if (start <= startidx && end >= endidx)
+                return noteContents.getLayout().getLineWidth(line);
         }
         return 0;
     }
