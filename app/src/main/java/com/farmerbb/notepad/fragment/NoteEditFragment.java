@@ -260,7 +260,7 @@ public class NoteEditFragment extends Fragment implements
 
         // Set up content view
         noteContents = getActivity().findViewById(R.id.editText1);
-        noteContents.addTextChangedListener(this);
+        noteContents.setOnTouchListener(this);
         magnifier = new Magnifier(noteContents);
         // Apply theme
         SharedPreferences pref = getActivity().getSharedPreferences(getActivity().getPackageName() + "_preferences", Context.MODE_PRIVATE);
@@ -452,9 +452,11 @@ public class NoteEditFragment extends Fragment implements
 
         if (correct_option.equals("smart")) {
             //apply touch listener
-            noteContents.setOnTouchListener(this);
+            noteContents.addTextChangedListener(this);
 //            if (floatButtonReceiver == null) floatButtonReceiver = new FloatButtonReceiver();
 //            getActivity().registerReceiver(floatButtonReceiver, new IntentFilter(FloatingButtonService.FLOAT_BUTTON_INTENT));
+        } else {
+            noteContents.removeTextChangedListener(this);
         }
     }
 
@@ -773,7 +775,7 @@ public class NoteEditFragment extends Fragment implements
                         if (tokens[tokens.length-1].length() > 0) {
                             correction = tokens[tokens.length-1];
                             correctionidx = content.lastIndexOf(correction);
-//                            Log.e(TAG, "correction : "+correction);
+                            Log.e(TAG, "correction : "+correction);
                             indiactorView.setText(correction);
                         }
                         //if there is text
@@ -895,9 +897,9 @@ public class NoteEditFragment extends Fragment implements
 
     private void executeAutoCorrection(float x, float y, String correction) {
         if (!correct_option.equals("drag")) return;
-        int offset1 = getTextIndexOfXY(x, y, 0); //line 0
-        int offset2 = getTextIndexOfXY(x, y, 50); //line 1
-        int offset3 = getTextIndexOfXY(x, y, 100); //line 2
+        int offset1 = getTextIndexOfXY(x, y, -20); //line 0
+        int offset2 = getTextIndexOfXY(x, y, 30); //line 1
+        int offset3 = getTextIndexOfXY(x, y, 80); //line 2
         String content = noteContents.getText().toString();
         List<Integer> offsets = new ArrayList<Integer>();
         offsets.add(offset1);
@@ -1095,11 +1097,13 @@ public class NoteEditFragment extends Fragment implements
     }
 
     private float getLastLineWidth(int startidx, int endidx) {
+        Log.e(TAG, "start "+startidx+" end " + endidx );
 
         int lines =  noteContents.getLineCount();
         for (int line = lines-1; line >= 0; line--) {
             int end = noteContents.getLayout().getLineEnd(line);
             int start = noteContents.getLayout().getLineStart(line);
+            Log.e(TAG, "line " + line + " start "+start+" end " + end);
             if (start <= startidx && end >= endidx)
                 return noteContents.getLayout().getLineWidth(line);
         }
