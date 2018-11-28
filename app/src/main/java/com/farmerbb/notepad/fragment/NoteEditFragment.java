@@ -639,7 +639,11 @@ public class NoteEditFragment extends Fragment implements
         y = y - location[1];
         release_x = x;
         release_y = y;
-        executeAutoCorrection(x, y, correction);
+        String tokens[] = noteContents.getText().toString().split("[(\\r?\\n)\\s]+");
+        if (tokens[tokens.length-1].length() > 0) {
+            this.correction = tokens[tokens.length - 1];
+            executeAutoCorrection(x, y, correction);
+        }
     }
 
     public void onReceivedUndo(){
@@ -891,7 +895,6 @@ public class NoteEditFragment extends Fragment implements
 
     private void executeAutoCorrection(float x, float y, String correction) {
         if (!correct_option.equals("drag")) return;
-
         int offset1 = getTextIndexOfXY(x, y, 0); //line 0
         int offset2 = getTextIndexOfXY(x, y, 50); //line 1
         int offset3 = getTextIndexOfXY(x, y, 100); //line 2
@@ -907,7 +910,7 @@ public class NoteEditFragment extends Fragment implements
         ArrayList<String> arr = new ArrayList<String>();
 
         for (int i = 0; i < offsets.size(); ++i) {
-            String s = getSurroudningTextOfIndex(content, offsets.get(i));
+            String s = getSurroudningTextOfIndex(content, offsets.get(i), correction);
             if (s != null) {
                 arr.add(s);
                 arr.add(correction);
@@ -1119,13 +1122,17 @@ public class NoteEditFragment extends Fragment implements
         return offset;
     }
 
-    private String getSurroudningTextOfIndex(String content, int index) {
+    private String getSurroudningTextOfIndex(String content, int index, String correction) {
         if (index >= content.length()){
             return null;
         }
 
         int startidx = Math.max(0, index-25);
-        int endidx = Math.min(content.lastIndexOf(correction), index+25);
+        int endidx = content.lastIndexOf(correction);
+        if (endidx <= startidx) {
+            endidx = Math.min(content.length()-1, index + 25);
+        }
+
 
         int newline = content.substring(0, index).lastIndexOf('\n');
         if (newline > -1){
