@@ -103,7 +103,7 @@ MyBroadCastReceiver.ReceiverListener {
     @Override
     protected void onStop() {
         super.onStop();
-        stopFloatingButtonService();
+//        stopFloatingButtonService();
     }
 
     @Override
@@ -233,7 +233,7 @@ MyBroadCastReceiver.ReceiverListener {
     @Override
     protected void onResume() {
         super.onResume();
-        startFloatingButtonService();
+//        startFloatingButtonService();
         WebViewInitState wvState = WebViewInitState.getInstance();
         wvState.initialize(this);
     }

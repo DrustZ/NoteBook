@@ -43,10 +43,12 @@ import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
+import android.text.Editable;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
+import android.text.TextWatcher;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
@@ -75,6 +77,7 @@ import com.farmerbb.notepad.activity.MainActivity;
 import com.farmerbb.notepad.R;
 import com.farmerbb.notepad.service.FloatingButtonService;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -91,7 +94,8 @@ import okhttp3.Response;
 
 import static android.view.Gravity.NO_GRAVITY;
 
-public class NoteEditFragment extends Fragment implements View.OnTouchListener {
+public class NoteEditFragment extends Fragment implements
+        View.OnTouchListener, TextWatcher {
 
     final String TAG = "[Log]";
     private EditText noteContents;
@@ -111,21 +115,38 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     private VelocityTracker mVelocityTracker = null;
     private boolean correction_begin = false; // if entered the correction mode
     private boolean undo_begin = false; // if undo gesture performed
-    private int span_begin = -1;
-    private int span_end = -1;
-    private int sent_begin = -1;
-    private int sent_end = -1;
     private float release_x = -1;
     private float release_y = -1;
     private float touch_down_x = -1;
     private float touch_down_y = -1;
     private long touch_down_time = 0;
+
+    /**
+     * correction related vars
+     */
+    private int span_begin = -1;
+    private int span_end = -1;
+    private int sent_begin = -1;
+    private int sent_end = -1;
+
+    private String correction = null;
     private String last_content = null;
     private String correct_content = null;
     private int last_span_begin = -1;
     private int last_span_end = -1;
 
-    private String correction = null;
+    private String sc_original_content = null;
+    private boolean smart_correction_begin = false;
+    private int sc_current_idx = -1;
+    private int sc_correction_range_start = -1;
+    private JSONArray sc_starts = null;
+    private JSONArray sc_ends = null;
+    private JSONArray sc_corrections = null;
+
+    /**
+     * correction related views
+     */
+
     private FloatButtonReceiver floatButtonReceiver = null;
     private PopupWindow popupWindow = null;
     private TextView indiactorView = null;
@@ -239,6 +260,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
 
         // Set up content view
         noteContents = getActivity().findViewById(R.id.editText1);
+        noteContents.addTextChangedListener(this);
         magnifier = new Magnifier(noteContents);
         // Apply theme
         SharedPreferences pref = getActivity().getSharedPreferences(getActivity().getPackageName() + "_preferences", Context.MODE_PRIVATE);
@@ -321,8 +343,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                 noteContents.setSelection(length, length);
         }
 
-        //apply touch listener
-        noteContents.setOnTouchListener(this);
         indiactorView = new TextView(this.getContext());
         indiactorView.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
         indiactorView.setTypeface(Typeface.SERIF, Typeface.BOLD);
@@ -363,8 +383,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                 showToast(R.string.draft_saved);
             }
         }
-
-        if (floatButtonReceiver != null) getActivity().unregisterReceiver(floatButtonReceiver);
+//        if (floatButtonReceiver != null) getActivity().unregisterReceiver(floatButtonReceiver);
     }
 
     @Override
@@ -432,8 +451,10 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         correct_option = pref.getString("correction_method", "drag");
 
         if (correct_option.equals("smart")) {
-            if (floatButtonReceiver == null) floatButtonReceiver = new FloatButtonReceiver();
-            getActivity().registerReceiver(floatButtonReceiver, new IntentFilter(FloatingButtonService.FLOAT_BUTTON_INTENT));
+            //apply touch listener
+            noteContents.setOnTouchListener(this);
+//            if (floatButtonReceiver == null) floatButtonReceiver = new FloatButtonReceiver();
+//            getActivity().registerReceiver(floatButtonReceiver, new IntentFilter(FloatingButtonService.FLOAT_BUTTON_INTENT));
         }
     }
 
@@ -603,6 +624,12 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         }
     }
 
+    /**
+     * Funcs recieves commands
+     * @param x
+     * @param y
+     * @param correction
+     */
     public void onReceivedCorrection(int x, int y, String correction){
         Layout layout = noteContents.getLayout();
         int [] location = new int[2];
@@ -626,6 +653,83 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         }
     }
 
+    public void onReceivedSmartCorrection(int command) {
+        if (!correct_option.equals("smart")) return;
+        switch (command){
+            //single tap command
+            case 1:
+                if (!smart_correction_begin) {
+                    sc_original_content = noteContents.getText().toString();
+                    String tokens[] = sc_original_content.split("[(\\r?\\n)\\s]+");
+                    if (tokens[tokens.length-1].length() > 0) {
+                        correction = tokens[tokens.length-1];
+                    }
+
+                    // there is correction to make!
+                    if (tokens.length > 0){
+                        smart_correction_begin = true;
+                        sc_correction_range_start = Math.max(sc_original_content.lastIndexOf(correction) - 1000, 0);
+                        new PostSmartCorrectionTask().execute(sc_original_content.substring(sc_correction_range_start, sc_original_content.lastIndexOf(correction)) );
+                    }
+
+                } else {
+                    if (sc_starts != null && sc_ends != null) {
+                        //correct it for ya
+                        correction = sc_corrections.optString(sc_current_idx);
+                        sb.clear();
+                        sb.append(sc_original_content);
+                        sc_original_content = null;
+                        setTextWithoutWatcher(sb);
+                        replaceWithAnimation();
+                    }
+                }
+                break;
+            //left drag
+            case 2:
+                if (smart_correction_begin){
+                    //go previous
+                    noteContents.clearFocus();
+                    if (sc_current_idx+1 < sc_starts.length()) {
+                        sc_current_idx += 1;
+                        span_begin = sc_correction_range_start + sc_starts.optInt(sc_current_idx);
+                        span_end = sc_correction_range_start + sc_ends.optInt(sc_current_idx);
+                        highlightStringInRange(span_begin, span_end);
+                    }
+                }
+                break;
+            //right drag
+            default:
+                if (smart_correction_begin) {
+                    noteContents.clearFocus();
+                    if (sc_current_idx-1 >= 0) {
+                        sc_current_idx -= 1;
+                        span_begin = sc_correction_range_start + sc_starts.optInt(sc_current_idx);
+                        span_end = sc_correction_range_start + sc_ends.optInt(sc_current_idx);
+                        highlightStringInRange(span_begin, span_end);
+                    }
+                }
+                break;
+        }
+    }
+
+    @Override
+    public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+        if (correct_option.equals("smart") && smart_correction_begin) {
+            //text changed by user, cancel the correction process
+            if (getActivity().getCurrentFocus() == noteContents){
+                cancelSmartHighlight();
+            }
+        }
+    }
+
+    @Override
+    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+    @Override
+    public void afterTextChanged(Editable editable) {
+
+    }
+
     /***
      * Touch processing functions
      * @param
@@ -636,6 +740,9 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
             switch (event.getAction()){
                 case MotionEvent.ACTION_DOWN:
                     correction = null;
+                    if (correct_option.equals("smart") && smart_correction_begin){
+                        cancelSmartHighlight();
+                    } else
                     if (correct_option.equals("drag") || correct_option.equals("plain")) {
                         if (mVelocityTracker == null) {
                             // Retrieve a new VelocityTracker object to watch the velocity of a motion.
@@ -817,7 +924,6 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
     /**
      * Http call
      */
-
     class PostCorrectionTask extends AsyncTask<ArrayList<String>, Void, Void> {
 
         private Exception exception;
@@ -841,6 +947,7 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
                     int sent_begin = Integer.parseInt(arr.get(i+2));
                     int sent_end = Integer.parseInt(arr.get(i+3));
                     String jsonString = new JSONObject()
+                            .put("smart", 0)
                             .put("sent", sent)
                             .put("correction", correction).toString();
 
@@ -907,6 +1014,50 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
             } else {
                 noteContents.setText(noteContents.getText().toString());
                 noteContents.setSelection(noteContents.getText().length());
+            }
+        }
+    }
+
+    class PostSmartCorrectionTask extends AsyncTask<String, Void, Void> {
+
+        @Override
+        protected Void doInBackground(String... strings) {
+            try {
+                String sent = strings[0];
+                String jsonString = new JSONObject()
+                        .put("smart", 1)
+                        .put("sent", sent)
+                        .put("correction", correction).toString();
+
+                RequestBody body = RequestBody.create(JSON, jsonString);
+                Request request = new Request.Builder()
+                        .url("http://192.168.1.10:8765")
+                        .post(body)
+                        .build();
+                Response response = client.newCall(request).execute();
+                JSONObject jsonObj = new JSONObject(response.body().string());
+                sc_starts = jsonObj.getJSONArray("starts");
+                sc_ends = jsonObj.getJSONArray("ends");
+                sc_corrections = jsonObj.getJSONArray("corrections");
+                return null;
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            if (sc_starts != null && sc_ends != null && sc_starts.length() == sc_ends.length()) {
+                //highlight the first correction
+                sc_current_idx = 0;
+                span_begin = sc_correction_range_start+sc_starts.optInt(0);
+                span_end = sc_correction_range_start+sc_ends.optInt(0);
+                highlightStringInRange(span_begin, sent_end);
+            } else {
+                sc_starts = null;
+                sc_ends = null;
             }
         }
     }
@@ -1096,6 +1247,11 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         valueAnimator.start();
     }
 
+    private void setTextWithoutWatcher(SpannableStringBuilder text) {
+        noteContents.removeTextChangedListener(this);
+        noteContents.setText(text);
+        noteContents.addTextChangedListener(this);
+    }
 
     //use magnifier if the android version is above P
     // background works horrible...
@@ -1170,6 +1326,27 @@ public class NoteEditFragment extends Fragment implements View.OnTouchListener {
         // Set the text color for first 4 characters
         sb.setSpan(bcs, span_begin, span_end, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
         return true;
+    }
+
+    private void highlightStringInRange(int sbegin, int send) {
+        String content = noteContents.getText().toString();
+        //insert, we highlight the space (by adding more !)
+        if (sbegin == send){
+            send += 2;
+            content = content.substring(0, sbegin) + "  " + content.substring(send);
+        }
+        sb.clear();
+        sb.append(content);
+        sb.setSpan(bcs, sbegin,
+                send, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+        setTextWithoutWatcher(sb);
+    }
+
+    private void cancelSmartHighlight() {
+        smart_correction_begin = false;
+        sb.clear();
+        sb.append(sc_original_content);
+        setTextWithoutWatcher(sb);
     }
 
     /**
