@@ -659,6 +659,8 @@ public class NoteEditFragment extends Fragment implements
             //single tap command
             case 1:
                 if (!smart_correction_begin) {
+                    Log.e(TAG, "smart begin!");
+                    noteContents.clearFocus();
                     sc_original_content = noteContents.getText().toString();
                     String tokens[] = sc_original_content.split("[(\\r?\\n)\\s]+");
                     if (tokens[tokens.length-1].length() > 0) {
@@ -669,10 +671,13 @@ public class NoteEditFragment extends Fragment implements
                     if (tokens.length > 0){
                         smart_correction_begin = true;
                         sc_correction_range_start = Math.max(sc_original_content.lastIndexOf(correction) - 1000, 0);
+                        sc_starts = null;
                         new PostSmartCorrectionTask().execute(sc_original_content.substring(sc_correction_range_start, sc_original_content.lastIndexOf(correction)) );
                     }
 
                 } else {
+                    Log.e(TAG, "smart end!");
+                    smart_correction_begin = false;
                     if (sc_starts != null && sc_ends != null) {
                         //correct it for ya
                         correction = sc_corrections.optString(sc_current_idx);
@@ -687,9 +692,10 @@ public class NoteEditFragment extends Fragment implements
             //left drag
             case 2:
                 if (smart_correction_begin){
+                    Log.e(TAG, "smart left <-");
                     //go previous
                     noteContents.clearFocus();
-                    if (sc_current_idx+1 < sc_starts.length()) {
+                    if (sc_starts != null && sc_current_idx+1 < sc_starts.length()) {
                         sc_current_idx += 1;
                         span_begin = sc_correction_range_start + sc_starts.optInt(sc_current_idx);
                         span_end = sc_correction_range_start + sc_ends.optInt(sc_current_idx);
@@ -700,6 +706,7 @@ public class NoteEditFragment extends Fragment implements
             //right drag
             default:
                 if (smart_correction_begin) {
+                    Log.e(TAG, "smart right <-");
                     noteContents.clearFocus();
                     if (sc_current_idx-1 >= 0) {
                         sc_current_idx -= 1;
@@ -1343,6 +1350,7 @@ public class NoteEditFragment extends Fragment implements
     }
 
     private void cancelSmartHighlight() {
+        Log.e(TAG, "smart canceled by user!");
         smart_correction_begin = false;
         sb.clear();
         sb.append(sc_original_content);

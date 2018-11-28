@@ -99,6 +99,7 @@ MyBroadCastReceiver.ReceiverListener {
 
     private MyBroadCastReceiver mCoorectionReceiver = null;
     private MyBroadCastReceiver mUndoReceiver = null;
+    private MyBroadCastReceiver mSmartCorrectionReceiver = null;
 
     @Override
     protected void onStop() {
@@ -219,6 +220,11 @@ MyBroadCastReceiver.ReceiverListener {
         mUndoReceiver.setmListener(this);
         IntentFilter filter2 = new IntentFilter("com.android.inputmethod.Correction_Undo");
         registerReceiver(mUndoReceiver, filter2);
+
+        mSmartCorrectionReceiver = new MyBroadCastReceiver();
+        mSmartCorrectionReceiver.setmListener(this);
+        IntentFilter filter3 = new IntentFilter("com.android.inputmethod.SmartCorrection");
+        registerReceiver(mSmartCorrectionReceiver, filter3);
     }
 
     @Override
@@ -228,6 +234,8 @@ MyBroadCastReceiver.ReceiverListener {
             unregisterReceiver(mCoorectionReceiver);
         if (mUndoReceiver != null)
             unregisterReceiver(mUndoReceiver);
+        if (mSmartCorrectionReceiver != null)
+            unregisterReceiver(mSmartCorrectionReceiver);
     }
 
     @Override
@@ -287,6 +295,9 @@ MyBroadCastReceiver.ReceiverListener {
                 fragment.onReceivedCorrection(x, y, correction);
             } else if (intent.hasExtra("undo")){
                 fragment.onReceivedUndo();
+            } else if (intent.hasExtra("command")){
+                int command = intent.getIntExtra("command", 1);
+                fragment.onReceivedSmartCorrection(command);
             }
         }
     }
