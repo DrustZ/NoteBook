@@ -130,8 +130,8 @@ public class NoteEditFragment extends Fragment implements
     private int sent_end = -1;
 
     private String correction = null;
-    private String last_content = null;
-    private String correct_content = null;
+    private String last_content = null; //for undo, text before apply the correction
+    private String correct_content = null; // for undo, text after apply the correction
     private int last_span_begin = -1;
     private int last_span_end = -1;
 
@@ -641,9 +641,8 @@ public class NoteEditFragment extends Fragment implements
         y = y - location[1];
         release_x = x;
         release_y = y;
-        String tokens[] = noteContents.getText().toString().split("[(\\r?\\n)\\s]+");
-        if (tokens[tokens.length-1].length() > 0) {
-            this.correction = tokens[tokens.length - 1];
+        boolean hascorrection = getCorrection(noteContents.getText().toString());
+        if (hascorrection) {
             executeAutoCorrection(x, y, correction);
         }
     }
@@ -659,6 +658,17 @@ public class NoteEditFragment extends Fragment implements
         }
     }
 
+    public boolean getCorrection(String content){
+        content = content.replaceAll("[^A-Za-z0-9 ]", " ");
+        String tokens[] = content.split("[(\\r?\\n)\\s]+");
+        if (tokens[tokens.length-1].length() > 0) {
+            correction = tokens[tokens.length-1];
+        }
+        if (tokens.length > 1 && correction.length() > 0)
+            return true;
+        return false;
+    }
+
     public void onReceivedSmartCorrection(int command) {
         if (!correct_option.equals("smart")) return;
         switch (command){
@@ -668,13 +678,9 @@ public class NoteEditFragment extends Fragment implements
                     Log.e(TAG, "smart begin!");
                     noteContents.clearFocus();
                     sc_original_content = noteContents.getText().toString();
-                    String tokens[] = sc_original_content.split("[(\\r?\\n)\\s]+");
-                    if (tokens[tokens.length-1].length() > 0) {
-                        correction = tokens[tokens.length-1];
-                    }
-
+                    Boolean hasCorrection = getCorrection(sc_original_content);
                     // there is correction to make!
-                    if (tokens.length > 0){
+                    if (hasCorrection){
                         smart_correction_begin = true;
                         sc_correction_range_start = Math.max(sc_original_content.lastIndexOf(correction) - 1000, 0);
                         sc_starts = null;
@@ -688,6 +694,7 @@ public class NoteEditFragment extends Fragment implements
                         //correct it for ya
                         correction = sc_corrections.optString(sc_current_idx);
                         sb.clear();
+                        sb.clearSpans();
                         sb.append(sc_original_content);
                         sc_original_content = null;
                         setTextWithoutWatcher(sb);
@@ -712,7 +719,7 @@ public class NoteEditFragment extends Fragment implements
             //right drag
             default:
                 if (smart_correction_begin) {
-                    Log.e(TAG, "smart right <-");
+                    Log.e(TAG, "smart right ->");
                     noteContents.clearFocus();
                     if (sc_current_idx-1 >= 0) {
                         sc_current_idx -= 1;
@@ -770,10 +777,9 @@ public class NoteEditFragment extends Fragment implements
                         touch_down_x = x;
                         touch_down_y = y;
                         String content = noteContents.getText().toString();
-                        String tokens[] = content.split("[(\\r?\\n)\\s]+");
+                        boolean hascorrection = getCorrection(content);
                         int correctionidx = -1;
-                        if (tokens[tokens.length-1].length() > 0) {
-                            correction = tokens[tokens.length-1];
+                        if (hascorrection) {
                             correctionidx = content.lastIndexOf(correction);
                             Log.e(TAG, "correction : "+correction);
                             indiactorView.setText(correction);
@@ -1066,7 +1072,7 @@ public class NoteEditFragment extends Fragment implements
                 sc_current_idx = 0;
                 span_begin = sc_correction_range_start+sc_starts.optInt(0);
                 span_end = sc_correction_range_start+sc_ends.optInt(0);
-                highlightStringInRange(span_begin, sent_end);
+                highlightStringInRange(span_begin, span_end);
             } else {
                 sc_starts = null;
                 sc_ends = null;
@@ -1097,13 +1103,13 @@ public class NoteEditFragment extends Fragment implements
     }
 
     private float getLastLineWidth(int startidx, int endidx) {
-        Log.e(TAG, "start "+startidx+" end " + endidx );
+//        Log.e(TAG, "start "+startidx+" end " + endidx );
 
         int lines =  noteContents.getLineCount();
         for (int line = lines-1; line >= 0; line--) {
             int end = noteContents.getLayout().getLineEnd(line);
             int start = noteContents.getLayout().getLineStart(line);
-            Log.e(TAG, "line " + line + " start "+start+" end " + end);
+//            Log.e(TAG, "line " + line + " start "+start+" end " + end);
             if (start <= startidx && end >= endidx)
                 return noteContents.getLayout().getLineWidth(line);
         }
@@ -1191,6 +1197,11 @@ public class NoteEditFragment extends Fragment implements
         }
 
         int lastidx = content.lastIndexOf(correction);
+        if (lastidx == -1){
+            last_content = null;
+            return;
+        }
+
         content = content.substring(0, lastidx);
         if (span_end >= content.length()){
             last_content = null;
@@ -1289,6 +1300,7 @@ public class NoteEditFragment extends Fragment implements
             span_begin = index;
             span_end = index;
             sb.clear();
+            sb.clearSpans();
             sb.append(content);
             // Set the text color for first 4 characters
             sb.setSpan(bcs, span_begin, span_end+1, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
@@ -1338,6 +1350,7 @@ public class NoteEditFragment extends Fragment implements
             return false;
 
         sb.clear();
+        sb.clearSpans();
         sb.append(content);
         span_begin = tmp_span_begin;
         span_end = tmp_span_end;
@@ -1347,6 +1360,7 @@ public class NoteEditFragment extends Fragment implements
     }
 
     private void highlightStringInRange(int sbegin, int send) {
+        if (span_begin > span_end) return;
         String content = noteContents.getText().toString();
         //insert, we highlight the space (by adding more !)
         if (sbegin == send){
@@ -1354,6 +1368,7 @@ public class NoteEditFragment extends Fragment implements
             content = content.substring(0, sbegin) + "  " + content.substring(send);
         }
         sb.clear();
+        sb.clearSpans();
         sb.append(content);
         sb.setSpan(bcs, sbegin,
                 send, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
@@ -1364,6 +1379,7 @@ public class NoteEditFragment extends Fragment implements
         Log.e(TAG, "smart canceled by user!");
         smart_correction_begin = false;
         sb.clear();
+        sb.clearSpans();
         sb.append(sc_original_content);
         setTextWithoutWatcher(sb);
     }
