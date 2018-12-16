@@ -919,6 +919,7 @@ public class NoteEditFragment extends Fragment implements
 
         for (int i = 0; i < offsets.size(); ++i) {
             String s = getSurroudningTextOfIndex(content, offsets.get(i), correction);
+            Log.e(TAG, "now have: "+s);
             if (s != null) {
                 arr.add(s);
                 arr.add(correction);
@@ -971,7 +972,7 @@ public class NoteEditFragment extends Fragment implements
 
                     RequestBody body = RequestBody.create(JSON, jsonString);
                     Request request = new Request.Builder()
-                            .url("http://192.168.1.10:8765")
+                            .url("http://192.168.43.10:8765")
                             .post(body)
                             .build();
                     Response response = client.newCall(request).execute();
@@ -1049,7 +1050,7 @@ public class NoteEditFragment extends Fragment implements
 
                 RequestBody body = RequestBody.create(JSON, jsonString);
                 Request request = new Request.Builder()
-                        .url("http://192.168.1.10:8765")
+                        .url("http://192.168.43.10:8765")
                         .post(body)
                         .build();
                 Response response = client.newCall(request).execute();
@@ -1137,16 +1138,19 @@ public class NoteEditFragment extends Fragment implements
             return null;
         }
 
-        int startidx = Math.max(0, index-25);
+        int startidx = Math.max(0, index-30);
         int endidx = content.lastIndexOf(correction);
-        if (endidx <= startidx) {
-            endidx = Math.min(content.length()-1, index + 25);
+        if (endidx <= 0) {
+            endidx = Math.min(content.length() - 1, index + 30);
+        }
+        else {
+            endidx = Math.min(endidx, index+30);
         }
 
 
-        int newline = content.substring(0, index).lastIndexOf('\n');
+        int newline = content.substring(startidx, index).lastIndexOf('\n');
         if (newline > -1){
-            startidx = newline+1;
+            startidx += newline+1;
         }
         else if (startidx > 0) {
             for (int i = startidx; i < index; i++) {
@@ -1158,14 +1162,14 @@ public class NoteEditFragment extends Fragment implements
             }
             startidx += 1;
         }
-
-        newline = content.substring(endidx).indexOf('\n');
-        if (newline > -1){
-            endidx = newline;
-        }
+//
+//        newline = content.substring(endidx).indexOf('\n');
+//        if (newline > -1){
+//            endidx += newline;
+//        }
         //even it equals the end of content length, we need to go back
         //because content length is the last correction
-        else {
+//        else {
             for (int i = endidx; i > index; i--) {
                 char c = content.charAt(i);
                 if (!Character.isLetter(c) && !Character.isDigit(c)) {
@@ -1173,7 +1177,7 @@ public class NoteEditFragment extends Fragment implements
                     break;
                 }
             }
-        }
+//        }
 
         if (endidx <= startidx){
             return null;
@@ -1211,7 +1215,7 @@ public class NoteEditFragment extends Fragment implements
         String newcontent = content.substring(0, span_begin)+correction+content.substring(span_end);
         //for insertion
         if (span_begin == span_end){
-            newcontent = content.substring(0, span_begin)+" "+correction+content.substring(span_end);
+            newcontent = content.substring(0, span_begin)+correction+" "+content.substring(span_end);
             span_begin += 1;
         }
         correct_content = newcontent;
@@ -1365,7 +1369,7 @@ public class NoteEditFragment extends Fragment implements
         //insert, we highlight the space (by adding more !)
         if (sbegin == send){
             send += 2;
-            content = content.substring(0, sbegin) + "  " + content.substring(send);
+            content = content.substring(0, sbegin) + "  " + content.substring(sbegin);
         }
         sb.clear();
         sb.clearSpans();
