@@ -124,8 +124,8 @@ public class NoteEditFragment extends Fragment implements
     /**
      * correction related vars
      */
-    private int span_begin = -1;
-    private int span_end = -1;
+    private int span_begin = -1; //error begin position
+    private int span_end = -1; //error end position
     private int sent_begin = -1;
     private int sent_end = -1;
 
@@ -1189,6 +1189,7 @@ public class NoteEditFragment extends Fragment implements
     }
 
     /** animation and string effects
+     * for plain method
       */
     private void replaceWithAnimation() {
         String content = noteContents.getText().toString();
@@ -1215,7 +1216,7 @@ public class NoteEditFragment extends Fragment implements
         String newcontent = content.substring(0, span_begin)+correction+content.substring(span_end);
         //for insertion
         if (span_begin == span_end){
-            newcontent = content.substring(0, span_begin)+correction+" "+content.substring(span_end);
+            newcontent = content.substring(0, span_begin)+" "+correction+content.substring(span_end);
             span_begin += 1;
         }
         correct_content = newcontent;
@@ -1235,6 +1236,9 @@ public class NoteEditFragment extends Fragment implements
         valueAnimator.start();
     }
 
+    /** animation and string effects
+     * for smart method (throw, magic)
+     */
     private void replaceWithAnimationInRange(String text, int start, int len){
         correct_content = text;
         ValueAnimator valueAnimator = ValueAnimator.ofArgb(0xffff6600,0xff000000);
@@ -1312,7 +1316,7 @@ public class NoteEditFragment extends Fragment implements
         }
 
         if (!Character.isLetter(c) && !Character.isDigit(c)) {
-            //if it's space but there's character before , then maybe the user wants to replace , but the word is too short to select
+            //if it's not space but there's character before , then maybe the user wants to replace , but the word is too short to select
             if (c > 0 && Character.isLetter(c-1)){
                 return false;
             }
