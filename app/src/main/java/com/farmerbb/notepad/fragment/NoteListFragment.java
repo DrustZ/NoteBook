@@ -36,6 +36,7 @@ import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.ActionMode;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -225,6 +226,7 @@ public class NoteListFragment extends Fragment {
 
                 Bundle bundle = new Bundle();
                 bundle.putString("filename", "new");
+                bundle.putBoolean("testing", false);
 
                 Fragment fragment = new NoteEditFragment();
                 fragment.setArguments(bundle);
@@ -235,6 +237,27 @@ public class NoteListFragment extends Fragment {
                     .replace(R.id.noteViewEdit, fragment, "NoteEditFragment")
                     .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_CLOSE)
                     .commit();
+            });
+
+            //add testing mode
+            floatingActionButton.setOnLongClickListener(v -> {
+                ScrollPositions.getInstance().setPosition(listView.getFirstVisiblePosition());
+                listener.getCabArray().clear();
+
+                Bundle bundle = new Bundle();
+                bundle.putString("filename", "new");
+                bundle.putBoolean("testing", true);
+
+                Fragment fragment = new NoteEditFragment();
+                fragment.setArguments(bundle);
+
+                // Add NoteEditFragment
+                getFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.noteViewEdit, fragment, "NoteEditFragment")
+                        .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_CLOSE)
+                        .commit();
+                return true;
             });
         }
     }

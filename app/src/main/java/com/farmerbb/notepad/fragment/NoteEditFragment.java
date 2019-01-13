@@ -21,6 +21,8 @@ import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -146,13 +148,20 @@ public class NoteEditFragment extends Fragment implements
     /**
      * correction related views
      */
-
     private FloatButtonReceiver floatButtonReceiver = null;
     private PopupWindow popupWindow = null;
     private TextView indiactorView = null;
     // Span to set text color to some RGB value
     BackgroundColorSpan bcs = new BackgroundColorSpan(Color.rgb(255, 255, 51));
     SpannableStringBuilder sb = new SpannableStringBuilder();
+
+    /**
+     * experiment testing mode
+     */
+    Boolean testingmode = false;
+    Integer current_testing = 0;
+    String teststrings[] = new String[] {
+            "\n\n\n\nToyota", "\n\n\n\nMercedes", "\n\n\n\nBMW", "Volkswagen", "Skoda" };
 
     String filename = String.valueOf(System.currentTimeMillis());
     String contentsOnLoad = "";
@@ -313,6 +322,8 @@ public class NoteEditFragment extends Fragment implements
                 filename = getArguments().getString("filename");
                 if(!filename.equals("draft"))
                     isSavedNote = true;
+            } else {
+                testingmode = getArguments().getBoolean("testing");
             }
         } catch (NullPointerException e) {
             filename = "new";
@@ -450,13 +461,18 @@ public class NoteEditFragment extends Fragment implements
         directEdit = pref.getBoolean("direct_edit", false);
         correct_option = pref.getString("correction_method", "drag");
 
-        if (correct_option.equals("smart")) {
+        if (correct_option.equals("smart") || testingmode) {
             //apply touch listener
             noteContents.addTextChangedListener(this);
 //            if (floatButtonReceiver == null) floatButtonReceiver = new FloatButtonReceiver();
 //            getActivity().registerReceiver(floatButtonReceiver, new IntentFilter(FloatingButtonService.FLOAT_BUTTON_INTENT));
         } else {
             noteContents.removeTextChangedListener(this);
+        }
+
+        if (testingmode) {
+            noteContents.setText(teststrings[current_testing]);
+            noteContents.setSelection(teststrings[current_testing].length());
         }
     }
 
@@ -745,9 +761,32 @@ public class NoteEditFragment extends Fragment implements
     @Override
     public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
 
+    AlertDialog testingDialog = null;
     @Override
     public void afterTextChanged(Editable editable) {
-
+        if (testingmode){
+            Log.e(TAG, "afterTextChanged: ");
+            String current_content = editable.toString().trim();
+            if (current_content.equals("test") && testingDialog == null){
+                final AlertDialog.Builder normalDialog =
+                        new AlertDialog.Builder(getActivity());
+                normalDialog.setTitle("我是一个普通Dialog");
+                normalDialog.setMessage("你要点击哪一个按钮呢?");
+                normalDialog.setPositiveButton("确定", (v,w) -> {
+                    current_testing += 1;
+                    if (current_testing < teststrings.length){
+                        sb.clear();
+                        sb.append(teststrings[current_testing]);
+                        setTextWithoutWatcher(sb);
+                        noteContents.setSelection(teststrings[current_testing].length());
+                        testingDialog = null;
+                    }
+                });
+                normalDialog.setCancelable(false);
+                testingDialog = normalDialog.create();
+                testingDialog.show();
+            }
+        }
     }
 
     /***
@@ -1285,9 +1324,13 @@ public class NoteEditFragment extends Fragment implements
     }
 
     private void setTextWithoutWatcher(SpannableStringBuilder text) {
-        noteContents.removeTextChangedListener(this);
-        noteContents.setText(text);
-        noteContents.addTextChangedListener(this);
+        if (correct_option.equals("smart") || testingmode == true) {
+            noteContents.removeTextChangedListener(this);
+            noteContents.setText(text);
+            noteContents.addTextChangedListener(this);
+        } else {
+            noteContents.setText(text);
+        }
     }
 
     //use magnifier if the android version is above P
