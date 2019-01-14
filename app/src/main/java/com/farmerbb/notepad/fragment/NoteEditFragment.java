@@ -78,6 +78,7 @@ import android.widget.Toast;
 import com.farmerbb.notepad.activity.MainActivity;
 import com.farmerbb.notepad.R;
 import com.farmerbb.notepad.service.FloatingButtonService;
+import com.farmerbb.notepad.util.ExpLogger;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -161,7 +162,8 @@ public class NoteEditFragment extends Fragment implements
     Boolean testingmode = false;
     Integer current_testing = 0;
     String teststrings[] = new String[] {
-            "\n\n\n\nToyota", "\n\n\n\nMercedes", "\n\n\n\nBMW", "Volkswagen", "Skoda" };
+            "\n\n\n\nToyota", "\n\n\n\nMercedes", "\n\n\n\nBMW"};
+    ExpLogger logger = null;
 
     String filename = String.valueOf(System.currentTimeMillis());
     String contentsOnLoad = "";
@@ -461,6 +463,14 @@ public class NoteEditFragment extends Fragment implements
         directEdit = pref.getBoolean("direct_edit", false);
         correct_option = pref.getString("correction_method", "drag");
 
+        if (testingmode) {
+            noteContents.setText(teststrings[current_testing]);
+            noteContents.setSelection(teststrings[current_testing].length());
+            logger = new ExpLogger();
+            logger.logStart();
+            logger.startTask(0);
+        }
+
         if (correct_option.equals("smart") || testingmode) {
             //apply touch listener
             noteContents.addTextChangedListener(this);
@@ -468,11 +478,6 @@ public class NoteEditFragment extends Fragment implements
 //            getActivity().registerReceiver(floatButtonReceiver, new IntentFilter(FloatingButtonService.FLOAT_BUTTON_INTENT));
         } else {
             noteContents.removeTextChangedListener(this);
-        }
-
-        if (testingmode) {
-            noteContents.setText(teststrings[current_testing]);
-            noteContents.setSelection(teststrings[current_testing].length());
         }
     }
 
@@ -667,7 +672,11 @@ public class NoteEditFragment extends Fragment implements
         String content = noteContents.getText().toString();
         if (last_content != null && correct_content != null
         && correct_content.equals(content)){
-            undoWithAnimation(); }
+            undoWithAnimation();
+            if (testingmode && logger != null) {
+                logger.logUndo();
+            }
+        }
         else {
             correct_content = null;
             last_content = null;
@@ -729,6 +738,9 @@ public class NoteEditFragment extends Fragment implements
                         span_begin = sc_correction_range_start + sc_starts.optInt(sc_current_idx);
                         span_end = sc_correction_range_start + sc_ends.optInt(sc_current_idx);
                         highlightStringInRange(span_begin, span_end);
+                        if (testingmode && logger != null) {
+                            logger.logSwipe("left");
+                        }
                     }
                 }
                 break;
@@ -742,6 +754,9 @@ public class NoteEditFragment extends Fragment implements
                         span_begin = sc_correction_range_start + sc_starts.optInt(sc_current_idx);
                         span_end = sc_correction_range_start + sc_ends.optInt(sc_current_idx);
                         highlightStringInRange(span_begin, span_end);
+                        if (testingmode && logger != null) {
+                            logger.logSwipe("right");
+                        }
                     }
                 }
                 break;
@@ -765,23 +780,34 @@ public class NoteEditFragment extends Fragment implements
     @Override
     public void afterTextChanged(Editable editable) {
         if (testingmode){
-            Log.e(TAG, "afterTextChanged: ");
+            logger.logChange(editable.toString());
             String current_content = editable.toString().trim();
             if (current_content.equals("test") && testingDialog == null){
+                logger.finishTask();
                 final AlertDialog.Builder normalDialog =
                         new AlertDialog.Builder(getActivity());
-                normalDialog.setTitle("我是一个普通Dialog");
-                normalDialog.setMessage("你要点击哪一个按钮呢?");
-                normalDialog.setPositiveButton("确定", (v,w) -> {
+                if (current_testing == teststrings.length-1){
+                    normalDialog.setTitle("Task Finished");
+                    normalDialog.setMessage("Click OK to finish");
+                } else {
+                    normalDialog.setTitle("Task "+(current_testing+1)+ " done");
+                    normalDialog.setMessage("Click OK to go to next task");
+                }
+                normalDialog.setPositiveButton("OK", (v,w) -> {
                     current_testing += 1;
                     if (current_testing < teststrings.length){
                         sb.clear();
+                        sb.clearSpans();
                         sb.append(teststrings[current_testing]);
                         setTextWithoutWatcher(sb);
                         noteContents.setSelection(teststrings[current_testing].length());
                         testingDialog = null;
+                        logger.startTask(current_testing);
+                    } else {
+                        logger.logEnd();
                     }
                 });
+
                 normalDialog.setCancelable(false);
                 testingDialog = normalDialog.create();
                 testingDialog.show();
@@ -843,15 +869,16 @@ public class NoteEditFragment extends Fragment implements
                                 //                            Log.e(TAG, "touch x "+x + " y "+y);
                                 return true;
                             }
-                            else if (x <= release_x + 150 && x >= release_x - 150
-                                    && y >= release_y - 150 && y <= release_y + 150
-                                    && last_content != null && correct_content != null
-                                    && correct_content.equals(content)) // undo criterion
-                            {
-                                touch_down_time = System.currentTimeMillis();
-                                undo_begin = true;
-                                return true;
-                            } else {
+//                            else if (x <= release_x + 150 && x >= release_x - 150
+//                                    && y >= release_y - 150 && y <= release_y + 150
+//                                    && last_content != null && correct_content != null
+//                                    && correct_content.equals(content)) // undo criterion
+//                            {
+//                                touch_down_time = System.currentTimeMillis();
+//                                undo_begin = true;
+//                                return true;
+//                            }
+                            else {
                                 undo_begin = false;
                             }
                         }
@@ -1427,7 +1454,7 @@ public class NoteEditFragment extends Fragment implements
     }
 
     private void cancelSmartHighlight() {
-        Log.e(TAG, "smart canceled by user!");
+//        Log.e(TAG, "smart canceled by user!");
         smart_correction_begin = false;
         sb.clear();
         sb.clearSpans();
