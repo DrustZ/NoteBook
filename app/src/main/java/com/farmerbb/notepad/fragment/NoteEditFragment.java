@@ -163,7 +163,7 @@ public class NoteEditFragment extends Fragment implements
     Boolean testingmode = false;
     Integer current_testing = 0;
     String teststrings[] = new String[] {
-            "\n\n\n\nToyota", "\n\n\n\nMercedes", "\n\n\n\nBMW"};
+            "", "\n\n\n\nToyota", "\n\n\n\nMercedes", "\n\n\n\nBMW"};
     ExpLogger logger = null;
 
     String filename = String.valueOf(System.currentTimeMillis());
@@ -646,6 +646,24 @@ public class NoteEditFragment extends Fragment implements
             case R.id.action_nolongpress:
                 noteContents.setLongClickable(false);
                 return true;
+            case R.id.action_savelog:
+                //save log
+                if (testingmode) {
+                    logger.finishTask();
+                    final EditText editText = new EditText(getActivity());
+                    AlertDialog.Builder inputDialog =
+                            new AlertDialog.Builder(getActivity());
+                    inputDialog.setTitle("Log File Name").setView(editText);
+                    inputDialog.setPositiveButton("Save", (v, w) -> {
+                        logger.logEnd(editText.getText().toString().trim());
+                        Toast.makeText(getActivity(),
+                                editText.getText().toString().trim()+" Saved",
+                                Toast.LENGTH_SHORT).show();
+                    });
+                    testingDialog = inputDialog.create();
+                    testingDialog.show();
+                }
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -786,36 +804,36 @@ public class NoteEditFragment extends Fragment implements
         if (testingmode){
             logger.logChange(editable.toString());
             String current_content = editable.toString().trim();
-            if (current_content.equals("test") && testingDialog == null){
-                logger.finishTask();
-                final AlertDialog.Builder normalDialog =
-                        new AlertDialog.Builder(getActivity());
-                if (current_testing == teststrings.length-1){
-                    normalDialog.setTitle("Task Finished");
-                    normalDialog.setMessage("Click OK to finish");
-                } else {
-                    normalDialog.setTitle("Task "+(current_testing+1)+ " done");
-                    normalDialog.setMessage("Click OK to go to next task");
-                }
-                normalDialog.setPositiveButton("OK", (v,w) -> {
-                    current_testing += 1;
-                    if (current_testing < teststrings.length){
-                        sb.clear();
-                        sb.clearSpans();
-                        sb.append(teststrings[current_testing]);
-                        setTextWithoutWatcher(sb);
-                        noteContents.setSelection(teststrings[current_testing].length());
-                        testingDialog = null;
-                        logger.startTask(current_testing);
-                    } else {
-                        logger.logEnd();
-                    }
-                });
-
-                normalDialog.setCancelable(false);
-                testingDialog = normalDialog.create();
-                testingDialog.show();
-            }
+//            if (current_content.equals("test") && testingDialog == null){
+//                logger.finishTask();
+//                final AlertDialog.Builder normalDialog =
+//                        new AlertDialog.Builder(getActivity());
+//                if (current_testing == teststrings.length-1){
+//                    normalDialog.setTitle("Task Finished");
+//                    normalDialog.setMessage("Click OK to finish");
+//                } else {
+//                    normalDialog.setTitle("Task "+(current_testing+1)+ " done");
+//                    normalDialog.setMessage("Click OK to go to next task");
+//                }
+//                normalDialog.setPositiveButton("OK", (v,w) -> {
+//                    current_testing += 1;
+//                    if (current_testing < teststrings.length){
+//                        sb.clear();
+//                        sb.clearSpans();
+//                        sb.append(teststrings[current_testing]);
+//                        setTextWithoutWatcher(sb);
+//                        noteContents.setSelection(teststrings[current_testing].length());
+//                        testingDialog = null;
+//                        logger.startTask(current_testing);
+//                    } else {
+//                        logger.logEnd();
+//                    }
+//                });
+//
+//                normalDialog.setCancelable(false);
+//                testingDialog = normalDialog.create();
+//                testingDialog.show();
+//            }
         }
     }
 

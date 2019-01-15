@@ -37,7 +37,12 @@
         android:title="@string/action_share"/>
     <item
         android:id="@+id/action_nolongpress"
+        android:orderInCategory="100"
         app:showAsAction="never"
         android:title="Disable Long Press"/>
-
+    <item
+        android:id="@+id/action_savelog"
+        android:orderInCategory="100"
+        app:showAsAction="never"
+        android:title="Save log"/>
 </menu>

@@ -29,10 +29,16 @@ public class ExpLogger {
         log_array = new JSONArray();
     }
 
-    public void logEnd() {
+    public void logEnd(String logname) {
         try {
             Writer output = null;
-            File file = new File(getFiledirForNow());
+            String fname = "";
+            if (logname != null && !logname.isEmpty())
+                fname = Environment.getExternalStorageDirectory()+"/Download/correctionExp/Exp_"+logname+".json";
+            else {
+                fname = getFiledirForNow();
+            }
+            File file = new File(fname);
             output = new BufferedWriter(new FileWriter(file));
             output.write(log_array.toString());
             output.close();
