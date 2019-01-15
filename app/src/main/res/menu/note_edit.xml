@@ -35,5 +35,9 @@
         android:orderInCategory="100"
         app:showAsAction="ifRoom"
         android:title="@string/action_share"/>
+    <item
+        android:id="@+id/action_nolongpress"
+        app:showAsAction="never"
+        android:title="Disable Long Press"/>
 
 </menu>

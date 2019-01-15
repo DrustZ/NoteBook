@@ -55,6 +55,7 @@ import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.util.Log;
+import android.view.ActionMode;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -641,7 +642,10 @@ public class NoteEditFragment extends Fragment implements
                     listener.printNote(contents);
 
                 return true;
-
+            //disable long pressing
+            case R.id.action_nolongpress:
+                noteContents.setLongClickable(false);
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }

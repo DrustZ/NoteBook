@@ -48,5 +48,9 @@
         android:orderInCategory="100"
         app:showAsAction="never"
         android:title="@string/action_print"/>
+    <item
+        android:id="@+id/action_nolongpress"
+        app:showAsAction="never"
+        android:title="Disable Long Press"/>
 
 </menu>
