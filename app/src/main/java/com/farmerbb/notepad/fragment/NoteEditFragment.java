@@ -468,7 +468,7 @@ public class NoteEditFragment extends Fragment implements
         directEdit = pref.getBoolean("direct_edit", false);
         correct_option = pref.getString("correction_method", "drag");
 
-        if (testingmode) {
+        if (testingmode && current_testing < teststrings.size()) {
             noteContents.setText(teststrings.get(current_testing)[0]);
             noteContents.setSelection(teststrings.get(current_testing)[0].length());
             logger = new ExpLogger();
@@ -1800,8 +1800,10 @@ public class NoteEditFragment extends Fragment implements
             InputStream is = getContext().getResources().openRawResource(R.raw.phrases);
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
             String line = reader.readLine();
+            String[] arr = {"\n\n\n\n\n\n\n\n\n\ntype ready: ", "type ready: ready", ""};
+            teststrings.add(arr);
             while (line != null) {
-                String[] arr = line.split("\\t");
+                arr = line.split("\\t");
                 arr[0] = "\n\n\n\n\n\n\n\n\n\n"+arr[0].trim()+" ";
                 arr[1] = "\n\n\n\n\n\n\n\n\n\n"+arr[1].trim();
                 arr[2] = arr[2].trim();

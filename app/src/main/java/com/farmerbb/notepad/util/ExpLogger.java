@@ -68,7 +68,7 @@ public class ExpLogger {
             log_task.put("undo", undo_times);
             log_task.put("swipe_left", swipe_left);
             log_task.put("swipe_right", swipe_right);
-            log_task.put("tottime", (System.nanoTime()-task_begin_time)/1000000000);
+            log_task.put("tottime", (System.nanoTime()-task_begin_time)/1000000);
             log_task.put("text_changes", text_change_array);
             if (!type.isEmpty()){
                 log_task.put("type", type);
@@ -79,7 +79,7 @@ public class ExpLogger {
                 JSONObject first = (JSONObject) text_change_array.get(0);
                 typing_time = ((JSONObject)text_change_array.get(len-1)).getLong("time")-first.getLong("time");
             }
-            log_task.put("typing_time", typing_time/1000000000);
+            log_task.put("typing_time", typing_time/1000000);
             log_array.put(log_task);
             log_task = new JSONObject();
             text_change_array = new JSONArray();
