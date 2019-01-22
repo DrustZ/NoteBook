@@ -737,7 +737,6 @@ public class NoteEditFragment extends Fragment implements
                         sc_starts = null;
                         new PostSmartCorrectionTask().execute(sc_original_content.substring(sc_correction_range_start, sc_original_content.lastIndexOf(correction)) );
                     }
-
                 } else {
                     Log.e(TAG, "smart end!");
                     smart_correction_begin = false;
@@ -756,7 +755,6 @@ public class NoteEditFragment extends Fragment implements
             //left drag
             case 2:
                 if (smart_correction_begin){
-                    Log.e(TAG, "smart left <-");
                     //go previous
                     noteContents.clearFocus();
                     if (sc_starts != null && sc_current_idx+1 < sc_starts.length()) {
@@ -773,7 +771,6 @@ public class NoteEditFragment extends Fragment implements
             //right drag
             default:
                 if (smart_correction_begin) {
-                    Log.e(TAG, "smart right ->");
                     noteContents.clearFocus();
                     if (sc_current_idx-1 >= 0) {
                         sc_current_idx -= 1;
@@ -795,6 +792,7 @@ public class NoteEditFragment extends Fragment implements
             //text changed by user, cancel the correction process
             if (getActivity().getCurrentFocus() == noteContents){
                 cancelSmartHighlight();
+                noteContents.setSelection(noteContents.length());
             }
         }
     }
@@ -995,6 +993,7 @@ public class NoteEditFragment extends Fragment implements
         offsets.add(offset1);
         int yoff = 20;
         while (y - yoff > 0 && offsets.size() < 3){
+            Log.e(TAG, "executeAutoCorrection: yoff "+offset1 + " " +content.length());
             offset2 = getTextIndexOfXY(x, y, yoff);
             if (offset1 != offset2){
                 offsets.add(offset2);
@@ -1003,12 +1002,7 @@ public class NoteEditFragment extends Fragment implements
             yoff += 20;
         }
         Log.e(TAG, "executeAutoCorrection: size"+offsets.size() );
-//        if (offset1 != offset2) {
-//            offsets.add(offset2);
-//        }
-//        if (offset2 != offset3) {
-//            offsets.add(offset3);
-//        }
+
         ArrayList<String> arr = new ArrayList<String>();
 
         for (int i = 0; i < offsets.size(); ++i) {
@@ -1313,8 +1307,12 @@ public class NoteEditFragment extends Fragment implements
         String newcontent = content.substring(0, span_begin)+correction+content.substring(span_end);
         //for insertion
         if (span_begin == span_end){
-            newcontent = content.substring(0, span_begin)+" "+correction+content.substring(span_end);
-            span_begin += 1;
+            if (correct_option.equals("smart") ){
+                newcontent = content.substring(0, span_begin) + correction + " " + content.substring(span_end);
+            } else {
+                newcontent = content.substring(0, span_begin) + " " + correction + content.substring(span_end);
+                span_begin += 1;
+            }
         }
         correct_content = newcontent;
         span_end = span_begin+correction.length();
