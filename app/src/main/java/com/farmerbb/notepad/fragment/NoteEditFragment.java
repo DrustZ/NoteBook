@@ -653,7 +653,7 @@ public class NoteEditFragment extends Fragment implements
             case R.id.action_savelog:
                 //save log
                 if (testingmode) {
-                    logger.finishTask();
+                    logger.finishTask("");
                     final EditText editText = new EditText(getActivity());
                     AlertDialog.Builder inputDialog =
                             new AlertDialog.Builder(getActivity());
@@ -809,7 +809,7 @@ public class NoteEditFragment extends Fragment implements
             logger.logChange(editable.toString());
             String current_content = editable.toString().trim();
             if (current_content.equals(teststrings.get(current_testing)[1].trim()) && testingDialog == null){
-                logger.finishTask();
+                logger.finishTask(teststrings.get(current_testing)[2]);
                 final AlertDialog.Builder normalDialog =
                         new AlertDialog.Builder(getActivity());
                 if (current_testing == teststrings.size()-1){
@@ -1806,6 +1806,7 @@ public class NoteEditFragment extends Fragment implements
                 String[] arr = line.split("\\t");
                 arr[0] = "\n\n\n\n\n\n\n\n\n\n"+arr[0].trim()+" ";
                 arr[1] = "\n\n\n\n\n\n\n\n\n\n"+arr[1].trim();
+                arr[2] = arr[2].trim();
                 teststrings.add(arr);
                 line = reader.readLine();
             }

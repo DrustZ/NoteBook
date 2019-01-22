@@ -63,13 +63,16 @@ public class ExpLogger {
         }
     }
 
-    public void finishTask() {
+    public void finishTask(String type) {
         try {
             log_task.put("undo", undo_times);
             log_task.put("swipe_left", swipe_left);
             log_task.put("swipe_right", swipe_right);
             log_task.put("tottime", (System.nanoTime()-task_begin_time)/1000000);
             log_task.put("text_changes", text_change_array);
+            if (!type.isEmpty()){
+                log_task.put("type", type);
+            }
             int len = text_change_array.length();
             long typing_time = 0;
             if (len > 1) {
