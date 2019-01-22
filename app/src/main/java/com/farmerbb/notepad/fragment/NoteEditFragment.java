@@ -84,9 +84,12 @@ import com.farmerbb.notepad.util.ExpLogger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -162,8 +165,7 @@ public class NoteEditFragment extends Fragment implements
      */
     Boolean testingmode = false;
     Integer current_testing = 0;
-    String teststrings[] = new String[] {
-            "", "\n\n\n\nToyota", "\n\n\n\nMercedes", "\n\n\n\nBMW"};
+    ArrayList<String[]> teststrings = new ArrayList<String[]>();
     ExpLogger logger = null;
 
     String filename = String.valueOf(System.currentTimeMillis());
@@ -369,6 +371,8 @@ public class NoteEditFragment extends Fragment implements
         // Show soft keyboard
         InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
         imm.showSoftInput(noteContents, InputMethodManager.SHOW_IMPLICIT);
+
+        prepareTestingPhrases();
     }
 
     @Override
@@ -465,8 +469,8 @@ public class NoteEditFragment extends Fragment implements
         correct_option = pref.getString("correction_method", "drag");
 
         if (testingmode) {
-            noteContents.setText(teststrings[current_testing]);
-            noteContents.setSelection(teststrings[current_testing].length());
+            noteContents.setText(teststrings.get(current_testing)[0]);
+            noteContents.setSelection(teststrings.get(current_testing)[0].length());
             logger = new ExpLogger();
             logger.logStart();
             logger.startTask(0);
@@ -804,36 +808,36 @@ public class NoteEditFragment extends Fragment implements
         if (testingmode){
             logger.logChange(editable.toString());
             String current_content = editable.toString().trim();
-//            if (current_content.equals("test") && testingDialog == null){
-//                logger.finishTask();
-//                final AlertDialog.Builder normalDialog =
-//                        new AlertDialog.Builder(getActivity());
-//                if (current_testing == teststrings.length-1){
-//                    normalDialog.setTitle("Task Finished");
-//                    normalDialog.setMessage("Click OK to finish");
-//                } else {
-//                    normalDialog.setTitle("Task "+(current_testing+1)+ " done");
-//                    normalDialog.setMessage("Click OK to go to next task");
-//                }
-//                normalDialog.setPositiveButton("OK", (v,w) -> {
-//                    current_testing += 1;
-//                    if (current_testing < teststrings.length){
-//                        sb.clear();
-//                        sb.clearSpans();
-//                        sb.append(teststrings[current_testing]);
-//                        setTextWithoutWatcher(sb);
-//                        noteContents.setSelection(teststrings[current_testing].length());
-//                        testingDialog = null;
-//                        logger.startTask(current_testing);
-//                    } else {
-//                        logger.logEnd();
-//                    }
-//                });
-//
-//                normalDialog.setCancelable(false);
-//                testingDialog = normalDialog.create();
-//                testingDialog.show();
-//            }
+            if (current_content.equals(teststrings.get(current_testing)[1].trim()) && testingDialog == null){
+                logger.finishTask();
+                final AlertDialog.Builder normalDialog =
+                        new AlertDialog.Builder(getActivity());
+                if (current_testing == teststrings.size()-1){
+                    normalDialog.setTitle("Task Finished");
+                    normalDialog.setMessage("Click OK to finish");
+                } else {
+                    normalDialog.setTitle("Task "+(current_testing+1)+ " done");
+                    normalDialog.setMessage("Click OK to go to next task");
+                }
+                normalDialog.setPositiveButton("OK", (v,w) -> {
+                    current_testing += 1;
+                    if (current_testing < teststrings.size()){
+                        sb.clear();
+                        sb.clearSpans();
+                        sb.append(teststrings.get(current_testing)[0]);
+                        setTextWithoutWatcher(sb);
+                        noteContents.setSelection(teststrings.get(current_testing)[0].length());
+                        testingDialog = null;
+                        logger.startTask(current_testing);
+                    } else {
+                        logger.logEnd("");
+                    }
+                });
+
+                normalDialog.setCancelable(false);
+                testingDialog = normalDialog.create();
+                testingDialog.show();
+            }
         }
     }
 
@@ -850,7 +854,7 @@ public class NoteEditFragment extends Fragment implements
                     if (correct_option.equals("smart") && smart_correction_begin){
                         cancelSmartHighlight();
                     } else
-                    if (correct_option.equals("drag") || correct_option.equals("plain")) {
+                    if (correct_option.equals("plain")) {
                         if (mVelocityTracker == null) {
                             // Retrieve a new VelocityTracker object to watch the velocity of a motion.
                             mVelocityTracker = VelocityTracker.obtain();
@@ -907,7 +911,7 @@ public class NoteEditFragment extends Fragment implements
                     }
                     break;
                 case MotionEvent.ACTION_MOVE:
-                    if (correct_option.equals("plain") || correct_option.equals("drag")) {
+                    if (correct_option.equals("plain")) {
                         if (!correction_begin) break;
 
                         mVelocityTracker.addMovement(event);
@@ -945,6 +949,8 @@ public class NoteEditFragment extends Fragment implements
                 case MotionEvent.ACTION_UP:
                     release_x = event.getX();
                     release_y = event.getY();
+                    Log.e(TAG, "receive update on touch x: " + release_x + " y: "+release_y );
+
                     if (correct_option.equals("plain")) {
                         if (!correction_begin && !undo_begin) break;
                         if (correction_begin ) {
@@ -966,18 +972,6 @@ public class NoteEditFragment extends Fragment implements
                             }
                             undo_begin = false;
                         }
-                    } else if (correct_option.equals("drag")) {
-                        // get up position x y
-                        if (!correction_begin && !undo_begin) break;
-
-                        if (correction_begin) {
-                            executeAutoCorrection(release_x, release_y, correction);
-                        } else if (undo_begin) {
-                            if (release_y > touch_down_y + 50 && System.currentTimeMillis() - touch_down_time < 1000) {
-                                undoWithAnimation();
-                            }
-                        }
-                            undo_begin = false;
                     }
                     endCorrection();
                     break;
@@ -991,18 +985,30 @@ public class NoteEditFragment extends Fragment implements
 
     private void executeAutoCorrection(float x, float y, String correction) {
         if (!correct_option.equals("drag")) return;
-        int offset1 = getTextIndexOfXY(x, y, -20); //line 0
-        int offset2 = getTextIndexOfXY(x, y, 30); //line 1
-        int offset3 = getTextIndexOfXY(x, y, 80); //line 2
+//        int offset1 = getTextIndexOfXY(x, y, 70); //line 0
+//        int offset2 = getTextIndexOfXY(x, y, 40); //line 1
+//        int offset3 = getTextIndexOfXY(x, y, 0); //line 2
         String content = noteContents.getText().toString();
         List<Integer> offsets = new ArrayList<Integer>();
+        int offset1 = getTextIndexOfXY(x, y, 0);
+        int offset2 = 0;
         offsets.add(offset1);
-        if (offset1 != offset2) {
-            offsets.add(offset2);
+        int yoff = 20;
+        while (y - yoff > 0 && offsets.size() < 3){
+            offset2 = getTextIndexOfXY(x, y, yoff);
+            if (offset1 != offset2){
+                offsets.add(offset2);
+                offset1 = offset2;
+            }
+            yoff += 20;
         }
-        if (offset2 != offset3) {
-            offsets.add(offset3);
-        }
+        Log.e(TAG, "executeAutoCorrection: size"+offsets.size() );
+//        if (offset1 != offset2) {
+//            offsets.add(offset2);
+//        }
+//        if (offset2 != offset3) {
+//            offsets.add(offset3);
+//        }
         ArrayList<String> arr = new ArrayList<String>();
 
         for (int i = 0; i < offsets.size(); ++i) {
@@ -1060,10 +1066,11 @@ public class NoteEditFragment extends Fragment implements
 
                     RequestBody body = RequestBody.create(JSON, jsonString);
                     Request request = new Request.Builder()
-                            .url("http://192.168.43.10:8765")
+                            .url("http://192.168.1.111:8765")
                             .post(body)
                             .build();
                     Response response = client.newCall(request).execute();
+
                     JSONObject jsonObj = new JSONObject(response.body().string());
 
                     int cor_start = jsonObj.getInt("start");
@@ -1138,10 +1145,11 @@ public class NoteEditFragment extends Fragment implements
 
                 RequestBody body = RequestBody.create(JSON, jsonString);
                 Request request = new Request.Builder()
-                        .url("http://192.168.43.10:8765")
+                        .url("http://192.168.1.111:8765")
                         .post(body)
                         .build();
                 Response response = client.newCall(request).execute();
+                Log.e(TAG, "doInBackground: "+response.toString());
                 JSONObject jsonObj = new JSONObject(response.body().string());
                 sc_starts = jsonObj.getJSONArray("starts");
                 sc_ends = jsonObj.getJSONArray("ends");
@@ -1149,6 +1157,7 @@ public class NoteEditFragment extends Fragment implements
                 return null;
             } catch (Exception e){
                 e.printStackTrace();
+                Log.e(TAG, e.getLocalizedMessage());
             }
             return null;
         }
@@ -1173,7 +1182,7 @@ public class NoteEditFragment extends Fragment implements
         Layout layout = noteContents.getLayout();
         try {
             float offsetx = layout.getPrimaryHorizontal(offset);
-            if (offsetx < x - 100 || offset > x + 100) {
+            if (offsetx < x - 250 || offsetx > x + 250) {
                 return false;
             }
             return true;
@@ -1785,5 +1794,23 @@ public class NoteEditFragment extends Fragment implements
 
     public String getFilename() {
         return filename;
+    }
+
+    private void prepareTestingPhrases() {
+        if (!testingmode) return;
+        try {
+            InputStream is = getContext().getResources().openRawResource(R.raw.phrases);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            String line = reader.readLine();
+            while (line != null) {
+                String[] arr = line.split("\\t");
+                arr[0] = "\n\n\n\n\n\n\n\n\n\n"+arr[0].trim()+" ";
+                arr[1] = "\n\n\n\n\n\n\n\n\n\n"+arr[1].trim();
+                teststrings.add(arr);
+                line = reader.readLine();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -31,6 +31,9 @@ public class ExpLogger {
 
     public void logEnd(String logname) {
         try {
+            File dir = new File(Environment.getExternalStorageDirectory() + "/Download/correctionExp/");
+            if (!dir.exists())
+                dir.mkdirs();
             Writer output = null;
             String fname = "";
             if (logname != null && !logname.isEmpty())
@@ -67,6 +70,13 @@ public class ExpLogger {
             log_task.put("swipe_right", swipe_right);
             log_task.put("tottime", (System.nanoTime()-task_begin_time)/1000000);
             log_task.put("text_changes", text_change_array);
+            int len = text_change_array.length();
+            long typing_time = 0;
+            if (len > 1) {
+                JSONObject first = (JSONObject) text_change_array.get(0);
+                typing_time = ((JSONObject)text_change_array.get(len-1)).getLong("time")-first.getLong("time");
+            }
+            log_task.put("typing_time", typing_time);
             log_array.put(log_task);
             log_task = new JSONObject();
             text_change_array = new JSONArray();
@@ -100,9 +110,6 @@ public class ExpLogger {
     }
 
     String getFiledirForNow() {
-        File dir = new File(Environment.getExternalStorageDirectory() + "/Download/correctionExp/");
-        if (!dir.exists())
-            dir.mkdirs();
         String fname = new SimpleDateFormat("MM_dd_HH_mm'.json'").format(new Date());
         fname = Environment.getExternalStorageDirectory()+"/Download/correctionExp/Exp_"+fname;
         return fname;
