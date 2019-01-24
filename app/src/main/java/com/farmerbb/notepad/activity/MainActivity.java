@@ -100,6 +100,7 @@ MyBroadCastReceiver.ReceiverListener {
     private MyBroadCastReceiver mCoorectionReceiver = null;
     private MyBroadCastReceiver mUndoReceiver = null;
     private MyBroadCastReceiver mSmartCorrectionReceiver = null;
+    private MyBroadCastReceiver mGestureReceiver = null;
 
     @Override
     protected void onStop() {
@@ -225,6 +226,11 @@ MyBroadCastReceiver.ReceiverListener {
         mSmartCorrectionReceiver.setmListener(this);
         IntentFilter filter3 = new IntentFilter("com.android.inputmethod.SmartCorrection");
         registerReceiver(mSmartCorrectionReceiver, filter3);
+
+        mGestureReceiver = new MyBroadCastReceiver();
+        mGestureReceiver.setmListener(this);
+        IntentFilter filter4 = new IntentFilter("com.android.inputmethod.GestureEdit");
+        registerReceiver(mGestureReceiver, filter4);
     }
 
     @Override
@@ -236,6 +242,8 @@ MyBroadCastReceiver.ReceiverListener {
             unregisterReceiver(mUndoReceiver);
         if (mSmartCorrectionReceiver != null)
             unregisterReceiver(mSmartCorrectionReceiver);
+        if (mGestureReceiver != null)
+            unregisterReceiver(mGestureReceiver);
     }
 
     @Override
@@ -298,6 +306,8 @@ MyBroadCastReceiver.ReceiverListener {
             } else if (intent.hasExtra("command")){
                 int command = intent.getIntExtra("command", 1);
                 fragment.onReceivedSmartCorrection(command);
+            } else if (intent.hasExtra("gesture")) {
+                fragment.onReceivedGesture(intent.getStringExtra("gesture"));
             }
         }
     }

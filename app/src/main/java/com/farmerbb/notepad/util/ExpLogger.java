@@ -104,6 +104,19 @@ public class ExpLogger {
         }
     }
 
+    public void logGesture(String gesture) {
+        try {
+            if (log_task.has(gesture)) {
+                int times = log_task.getInt(gesture)+1;
+                log_task.put(gesture, times);
+            } else {
+                log_task.put(gesture, 1);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public void logSwipe(String direction) {
         if (direction.equals("left")){
             swipe_left += 1;}

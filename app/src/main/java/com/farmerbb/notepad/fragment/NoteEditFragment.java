@@ -709,6 +709,12 @@ public class NoteEditFragment extends Fragment implements
         }
     }
 
+    public void onReceivedGesture(String gesture) {
+        if (testingmode){
+            logger.logGesture(gesture);
+        }
+    }
+
     public boolean getCorrection(String content){
         content = content.replaceAll("[^A-Za-z0-9 ]", " ");
         String tokens[] = content.split("[(\\r?\\n)\\s]+");
@@ -1800,7 +1806,7 @@ public class NoteEditFragment extends Fragment implements
             InputStream is = getContext().getResources().openRawResource(R.raw.phrases);
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
             String line = reader.readLine();
-            String[] arr = {"\n\n\n\n\n\n\n\n\n\ntype ready: ", "type ready: ready", ""};
+            String[] arr = {"", "ready", ""};
             teststrings.add(arr);
             while (line != null) {
                 arr = line.split("\\t");
