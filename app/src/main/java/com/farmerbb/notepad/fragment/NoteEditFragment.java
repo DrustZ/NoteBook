@@ -690,9 +690,9 @@ public class NoteEditFragment extends Fragment implements
      * Funcs recieves commands
      * @param x
      * @param y
-     * @param correction
+     * @param correctstr
      */
-    public void onReceivedCorrection(int x, int y, String correction){
+    public void onReceivedCorrection(int x, int y, String correctstr){
         Layout layout = noteContents.getLayout();
         int [] location = new int[2];
         noteContents.getLocationInWindow(location);
@@ -703,7 +703,7 @@ public class NoteEditFragment extends Fragment implements
         release_y = y;
         boolean hascorrection = getCorrection(noteContents.getText().toString());
         if (hascorrection) {
-            executeAutoCorrection(x, y, correction);
+            executeAutoCorrection(x, y, correctstr);
         }
     }
 
@@ -1002,7 +1002,7 @@ public class NoteEditFragment extends Fragment implements
         return false;
     }
 
-    private void executeAutoCorrection(float x, float y, String correction) {
+    private void executeAutoCorrection(float x, float y, String correction_str) {
         if (!correct_option.equals("drag")) return;
 //        int offset1 = getTextIndexOfXY(x, y, 70); //line 0
 //        int offset2 = getTextIndexOfXY(x, y, 40); //line 1
@@ -1014,7 +1014,7 @@ public class NoteEditFragment extends Fragment implements
         offsets.add(offset1);
         int yoff = 20;
         while (y - yoff > 0 && offsets.size() < 3){
-            Log.e(TAG, "executeAutoCorrection: yoff "+offset1 + " " +content.length());
+//            Log.e(TAG, "executeAutoCorrection: yoff "+offset1 + " " +content.length());
             offset2 = getTextIndexOfXY(x, y, yoff);
             if (offset1 != offset2){
                 offsets.add(offset2);
@@ -1022,16 +1022,16 @@ public class NoteEditFragment extends Fragment implements
             }
             yoff += 20;
         }
-        Log.e(TAG, "executeAutoCorrection: size"+offsets.size() );
+//        Log.e(TAG, "executeAutoCorrection: size"+offsets.size() );
 
         ArrayList<String> arr = new ArrayList<String>();
 
         for (int i = 0; i < offsets.size(); ++i) {
-            String s = getSurroudningTextOfIndex(content, offsets.get(i), correction);
+            String s = getSurroudningTextOfIndex(content, offsets.get(i));
             Log.e(TAG, "now have: "+s);
             if (s != null) {
                 arr.add(s);
-                arr.add(correction);
+                arr.add(correction_str);
                 arr.add(String.valueOf(sent_begin));
                 arr.add(String.valueOf(sent_end));
             }
@@ -1252,13 +1252,14 @@ public class NoteEditFragment extends Fragment implements
         return offset;
     }
 
-    private String getSurroudningTextOfIndex(String content, int index, String correction) {
+    private String getSurroudningTextOfIndex(String content, int index) {
         if (index >= content.length()){
             return null;
         }
 
         int startidx = Math.max(0, index-30);
         int endidx = content.lastIndexOf(correction);
+
         if (endidx <= 0) {
             endidx = Math.min(content.length() - 1, index + 30);
         }
