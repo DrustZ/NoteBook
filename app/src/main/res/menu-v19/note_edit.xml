@@ -49,10 +49,10 @@
         app:showAsAction="never"
         android:title="@string/action_print"/>
     <item
-        android:id="@+id/action_nolongpress"
+        android:id="@+id/action_restart"
         android:orderInCategory="100"
         app:showAsAction="never"
-        android:title="Disable Long Press"/>
+        android:title="Restart Last"/>
     <item
         android:id="@+id/action_savelog"
         android:orderInCategory="100"

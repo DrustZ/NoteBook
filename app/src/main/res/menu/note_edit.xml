@@ -41,6 +41,11 @@
         app:showAsAction="never"
         android:title="Disable Long Press"/>
     <item
+        android:id="@+id/action_restart"
+        android:orderInCategory="100"
+        app:showAsAction="never"
+        android:title="Restart Last"/>
+    <item
         android:id="@+id/action_savelog"
         android:orderInCategory="100"
         app:showAsAction="never"

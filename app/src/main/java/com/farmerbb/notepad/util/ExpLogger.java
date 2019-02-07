@@ -19,6 +19,7 @@ public class ExpLogger {
     private int swipe_left;
     private int swipe_right;
     private long task_begin_time;
+    private long http_post_time;
     private JSONArray log_array;
     private JSONObject log_task;
     private JSONArray text_change_array;
@@ -63,13 +64,29 @@ public class ExpLogger {
         }
     }
 
+    public void restartTask(int index) {
+        if (current_task_idx > index){
+            log_array.remove(log_array.length()-1);
+        }
+        current_task_idx = index;
+        undo_times = 0;
+        task_begin_time = System.nanoTime();
+        log_task = new JSONObject();
+        text_change_array = new JSONArray();
+        try {
+            log_task.put("starttime", task_begin_time);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public void finishTask(String type) {
         try {
             log_task.put("undo", undo_times);
             log_task.put("swipe_left", swipe_left);
             log_task.put("swipe_right", swipe_right);
             log_task.put("tottime", (System.nanoTime()-task_begin_time)/1000000);
-            log_task.put("text_changes", text_change_array);
+            log_task.put("post_time", http_post_time/1000000);
             if (!type.isEmpty()){
                 log_task.put("type", type);
             }
@@ -80,6 +97,7 @@ public class ExpLogger {
                 typing_time = ((JSONObject)text_change_array.get(len-1)).getLong("time")-first.getLong("time");
             }
             log_task.put("typing_time", typing_time/1000000);
+            log_task.put("text_changes", text_change_array);
             log_array.put(log_task);
             log_task = new JSONObject();
             text_change_array = new JSONArray();
@@ -87,6 +105,8 @@ public class ExpLogger {
             e.printStackTrace();
         }
     }
+
+    public void logPostTime(long posttime) { http_post_time = posttime; }
 
     public void logUndo() {
         undo_times += 1;

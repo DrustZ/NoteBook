@@ -167,6 +167,8 @@ public class NoteEditFragment extends Fragment implements
     Integer current_testing = 0;
     ArrayList<String[]> teststrings = new ArrayList<String[]>();
     ExpLogger logger = null;
+    long post_time = 0;
+    long start_post_time = 0;
 
     String filename = String.valueOf(System.currentTimeMillis());
     String contentsOnLoad = "";
@@ -647,12 +649,23 @@ public class NoteEditFragment extends Fragment implements
 
                 return true;
             //disable long pressing
-            case R.id.action_nolongpress:
-                noteContents.setLongClickable(false);
+            case R.id.action_restart:
+                if (current_testing > 0) {
+                    current_testing -= 1;
+                    sb.clear();
+                    sb.clearSpans();
+                    sb.append(teststrings.get(current_testing)[0]);
+                    setTextWithoutWatcher(sb);
+                    testingDialog = null;
+                    logger.restartTask(current_testing);
+                    noteContents.setSelection(teststrings.get(current_testing)[0].length());
+                }
                 return true;
             case R.id.action_savelog:
                 //save log
                 if (testingmode) {
+                    logger.logPostTime(post_time);
+                    post_time = 0;
                     logger.finishTask("");
                     final EditText editText = new EditText(getActivity());
                     AlertDialog.Builder inputDialog =
@@ -813,6 +826,8 @@ public class NoteEditFragment extends Fragment implements
             logger.logChange(editable.toString());
             String current_content = editable.toString().trim();
             if (current_content.equals(teststrings.get(current_testing)[1].trim()) && testingDialog == null){
+                logger.logPostTime(post_time);
+                post_time = 0;
                 logger.finishTask(teststrings.get(current_testing)[2]);
                 final AlertDialog.Builder normalDialog =
                         new AlertDialog.Builder(getActivity());
@@ -1052,6 +1067,7 @@ public class NoteEditFragment extends Fragment implements
         protected Void doInBackground(ArrayList<String>... arrays) {
             try {
                 ArrayList<String> arr = arrays[0];
+                start_post_time = System.nanoTime();
                 for (int i = 0; i < arr.size(); i += 4) {
                     String sent = arr.get(i);
                     String correction = arr.get(i+1);
@@ -1107,14 +1123,18 @@ public class NoteEditFragment extends Fragment implements
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
             Log.e(TAG, "best sent:"+bestsent +"\ncorr to  :"+bestcor_sent);
-
             if (bestprob > 0) {
                 String content = noteContents.getText().toString();
+                if (content == null) return;
+
                 last_content = content;
                 last_span_begin = beststart;
                 last_span_end = content.substring(beststart+1).indexOf(' ');
 
                 int lastidx = content.lastIndexOf(correction);
+                if (lastidx < 0) return;
+                post_time += System.nanoTime() - start_post_time;
+                Log.e(TAG, "post time: "+ (post_time/1000000) );
                 content = content.substring(0, lastidx);
 
                 if (last_span_end == -1) { last_span_end = last_span_begin+1; }
@@ -1137,6 +1157,7 @@ public class NoteEditFragment extends Fragment implements
         @Override
         protected Void doInBackground(String... strings) {
             try {
+                start_post_time = System.nanoTime();
                 String sent = strings[0];
                 String jsonString = new JSONObject()
                         .put("smart", 1)
@@ -1165,6 +1186,7 @@ public class NoteEditFragment extends Fragment implements
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
+            post_time += System.nanoTime() - start_post_time;
             if (sc_starts != null && sc_ends != null && sc_starts.length() == sc_ends.length()) {
                 //highlight the first correction
                 sc_current_idx = 0;
@@ -1473,7 +1495,7 @@ public class NoteEditFragment extends Fragment implements
     }
 
     private void highlightStringInRange(int sbegin, int send) {
-        if (span_begin > span_end) return;
+        if (span_begin > span_end || sbegin < 0) return;
         String content = noteContents.getText().toString();
         //insert, we highlight the space (by adding more !)
         if (sbegin == send){
