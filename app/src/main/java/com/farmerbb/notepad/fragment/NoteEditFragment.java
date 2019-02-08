@@ -948,10 +948,10 @@ public class NoteEditFragment extends Fragment implements
                             noteContents.setSelection(cursor_pos);
                             magnifier.show(event.getX(), event.getY() - 30);
                             if (popupWindow.isShowing()) {
-                                popupWindow.update((int) event.getRawX() - (magnifier.getWidth() - 20) / 2, (int) (event.getRawY() - 150 - magnifier.getHeight()),
+                                popupWindow.update((int) event.getRawX() - (magnifier.getWidth() - 20) / 2, (int) (event.getRawY() - 190 - magnifier.getHeight()),
                                         magnifier.getWidth() - 20, magnifier.getHeight() - 55);
                             } else {
-                                popupWindow.showAtLocation(noteContents, NO_GRAVITY, (int) event.getRawX() - (magnifier.getWidth() - 20) / 2, (int) (event.getRawY() - 150 - magnifier.getHeight()));
+                                popupWindow.showAtLocation(noteContents, NO_GRAVITY, (int) event.getRawX() - (magnifier.getWidth() - 20) / 2, (int) (event.getRawY() - 190 - magnifier.getHeight()));
                             }
                         } else {
                             span_begin = -1;
