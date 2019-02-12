@@ -54,6 +54,9 @@ public class ExpLogger {
     public void startTask(int index) {
         current_task_idx = index;
         undo_times = 0;
+        swipe_left = 0;
+        swipe_right = 0;
+        http_post_time = 0;
         task_begin_time = System.nanoTime();
         log_task = new JSONObject();
         text_change_array = new JSONArray();
@@ -68,16 +71,7 @@ public class ExpLogger {
         if (current_task_idx > index){
             log_array.remove(log_array.length()-1);
         }
-        current_task_idx = index;
-        undo_times = 0;
-        task_begin_time = System.nanoTime();
-        log_task = new JSONObject();
-        text_change_array = new JSONArray();
-        try {
-            log_task.put("starttime", task_begin_time);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        startTask(index);
     }
 
     public void finishTask(String type) {
