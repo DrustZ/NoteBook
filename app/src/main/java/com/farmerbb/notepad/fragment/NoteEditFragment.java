@@ -1082,7 +1082,7 @@ public class NoteEditFragment extends Fragment implements
 
                     RequestBody body = RequestBody.create(JSON, jsonString);
                     Request request = new Request.Builder()
-                            .url("http://192.168.1.111:8765")
+                            .url("http://172.28.100.27:8765")
                             .post(body)
                             .build();
                     Response response = client.newCall(request).execute();
@@ -1166,7 +1166,7 @@ public class NoteEditFragment extends Fragment implements
 
                 RequestBody body = RequestBody.create(JSON, jsonString);
                 Request request = new Request.Builder()
-                        .url("http://192.168.1.111:8765")
+                        .url("http://172.28.100.27:8765")
                         .post(body)
                         .build();
                 Response response = client.newCall(request).execute();
@@ -1498,6 +1498,9 @@ public class NoteEditFragment extends Fragment implements
     private void highlightStringInRange(int sbegin, int send) {
         if (span_begin > span_end || sbegin < 0) return;
         String content = noteContents.getText().toString();
+        if (sc_original_content != null){
+            content = sc_original_content;
+        }
         //insert, we highlight the space (by adding more !)
         if (sbegin == send){
             send += 2;
